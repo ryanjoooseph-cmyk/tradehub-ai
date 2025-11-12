@@ -1,0 +1,32 @@
+{
+  "task_id": "5b022c26-5e5c-430e-b364-066804005b0e",
+  "task_type": "codegen_backend",
+  "payload": {
+    "notes": "basic invoicing structure, later we plug payment provider",
+    "route": "/api/invoices",
+    "table": "invoices",
+    "fields": [
+      "id",
+      "job_id",
+      "tradie_id",
+      "customer_id",
+      "amount",
+      "status",
+      "created_at"
+    ],
+    "feature": "schema_invoices",
+    "required": [
+      "job_id",
+      "amount",
+      "tradie_id",
+      "customer_id"
+    ]
+  },
+  "result": [
+    "('raw', \"```sql\\nCREATE TABLE IF NOT EXISTS invoices (\\n    id SERIAL PRIMARY KEY,\\n    job_id INT NOT NULL,\\n    tradie_id INT NOT NULL,\\n    customer_id INT NOT NULL,\\n    amount DECIMAL(10, 2) NOT NULL,\\n    status VARCHAR(50) DEFAULT 'pending',\\n    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\\n    FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE,\\n    FOREIGN KEY (tradie_id) REFERENCES tradies(id) ON DELETE CASCADE,\\n    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE\\n);\\n```\\n```ts\\nimport { NextRequest, NextResponse } from 'next/server';\\nimport { createClient } from '@supabase/supabase-js';\\n\\nconst supabaseUrl = process.env.SUPABASE_URL || '';\\nconst supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';\\nconst supabase = createClient(supabaseUrl, supabaseKey);\\n\\nexport async function POST(req: NextRequest) {\\n    const { job_id, tradie_id, customer_id, amount } = await req.json();\\n\\n    // Validate required fields\\n    if (!job_id || !tradie_id || !customer_id || !amount) {\\n        return NextResponse.json({ error: 'All fields are required.' }, { status: 400 });\\n    }\\n\\n    const { data, error } = await supabase\\n        .from('invoices')\\n        .insert([{ job_id, tradie_id, customer_id, amount }]);\\n\\n    if (error) {\\n        return NextResponse.json({ error: error.message }, { status: 500 });\\n    }\\n\\n    return NextResponse.json({ data }, { status: 201 });\\n}\\n```\")",
+    "('pydantic', None)",
+    "('json_dict', None)",
+    "('tasks_output', [TaskOutput(description=\"Generate SQL to create a jobs table (if not exists) and a Next.js route handler at /app/api/jobs/route.ts to insert into Supabase.\\nPayload: {'notes': 'basic invoicing structure, later we plug payment provider', 'route': '/api/invoices', 'table': 'invoices', 'fields': ['id', 'job_id', 'tradie_id', 'customer_id', 'amount', 'status', 'created_at'], 'feature': 'schema_invoices', 'required': ['job_id', 'amount', 'tradie_id', 'customer_id']}\", name='generate_backend', expected_output='```sql\\n-- SQL here\\n```\\n```ts\\n// route handler here\\n```', summary='Generate SQL to create a jobs table (if not exists)...', raw=\"```sql\\nCREATE TABLE IF NOT EXISTS invoices (\\n    id SERIAL PRIMARY KEY,\\n    job_id INT NOT NULL,\\n    tradie_id INT NOT NULL,\\n    customer_id INT NOT NULL,\\n    amount DECIMAL(10, 2) NOT NULL,\\n    status VARCHAR(50) DEFAULT 'pending',\\n    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\\n    FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE,\\n    FOREIGN KEY (tradie_id) REFERENCES tradies(id) ON DELETE CASCADE,\\n    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE\\n);\\n```\\n```ts\\nimport { NextRequest, NextResponse } from 'next/server';\\nimport { createClient } from '@supabase/supabase-js';\\n\\nconst supabaseUrl = process.env.SUPABASE_URL || '';\\nconst supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';\\nconst supabase = createClient(supabaseUrl, supabaseKey);\\n\\nexport async function POST(req: NextRequest) {\\n    const { job_id, tradie_id, customer_id, amount } = await req.json();\\n\\n    // Validate required fields\\n    if (!job_id || !tradie_id || !customer_id || !amount) {\\n        return NextResponse.json({ error: 'All fields are required.' }, { status: 400 });\\n    }\\n\\n    const { data, error } = await supabase\\n        .from('invoices')\\n        .insert([{ job_id, tradie_id, customer_id, amount }]);\\n\\n    if (error) {\\n        return NextResponse.json({ error: error.message }, { status: 500 });\\n    }\\n\\n    return NextResponse.json({ data }, { status: 201 });\\n}\\n```\", pydantic=None, json_dict=None, agent='Supabase/backend generator', output_format=<OutputFormat.RAW: 'raw'>)])",
+    "('token_usage', UsageMetrics(total_tokens=661, prompt_tokens=296, cached_prompt_tokens=0, completion_tokens=365, successful_requests=1))"
+  ]
+}

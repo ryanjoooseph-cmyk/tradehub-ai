@@ -1,0 +1,34 @@
+{
+  "task_id": "fc369b32-23c6-4b7d-a243-09405789c097",
+  "task_type": "codegen_backend",
+  "payload": {
+    "notes": "create table if not exists + POST (create) + GET (list) with filters by customer_id/tradie_id/status",
+    "route": "/api/jobs",
+    "table": "jobs",
+    "fields": [
+      "id",
+      "title",
+      "description",
+      "location",
+      "budget",
+      "customer_id",
+      "tradie_id",
+      "status",
+      "created_at"
+    ],
+    "feature": "schema_jobs",
+    "required": [
+      "title",
+      "description",
+      "location",
+      "customer_id"
+    ]
+  },
+  "result": [
+    "('raw', \"```sql\\nCREATE TABLE IF NOT EXISTS jobs (\\n    id SERIAL PRIMARY KEY,\\n    title VARCHAR(255) NOT NULL,\\n    description TEXT NOT NULL,\\n    location VARCHAR(255) NOT NULL,\\n    budget DECIMAL(10, 2),\\n    customer_id UUID NOT NULL,\\n    tradie_id UUID,\\n    status VARCHAR(50),\\n    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\\n    FOREIGN KEY (customer_id) REFERENCES users(id) ON DELETE CASCADE,\\n    FOREIGN KEY (tradie_id) REFERENCES tradies(id) ON DELETE SET NULL\\n);\\n```\\n```ts\\nimport { createClient } from '@supabase/supabase-js';\\nimport { NextResponse } from 'next/server';\\n\\nconst supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);\\n\\n// POST /api/jobs\\nexport async function POST(request: Request) {\\n    const { title, description, location, budget, customer_id, tradie_id, status } = await request.json();\\n\\n    const { data, error } = await supabase\\n        .from('jobs')\\n        .insert([{ title, description, location, budget, customer_id, tradie_id, status }]);\\n\\n    if (error) {\\n        return NextResponse.json({ error: error.message }, { status: 400 });\\n    }\\n\\n    return NextResponse.json({ data }, { status: 201 });\\n}\\n\\n// GET /api/jobs\\nexport async function GET(request: Request) {\\n    const { searchParams } = new URL(request.url);\\n    const customer_id = searchParams.get('customer_id');\\n    const tradie_id = searchParams.get('tradie_id');\\n    const status = searchParams.get('status');\\n\\n    let query = supabase\\n        .from('jobs')\\n        .select('*');\\n\\n    if (customer_id) {\\n        query = query.eq('customer_id', customer_id);\\n    }\\n    if (tradie_id) {\\n        query = query.eq('tradie_id', tradie_id);\\n    }\\n    if (status) {\\n        query = query.eq('status', status);\\n    }\\n\\n    const { data, error } = await query;\\n\\n    if (error) {\\n        return NextResponse.json({ error: error.message }, { status: 400 });\\n    }\\n\\n    return NextResponse.json(data, { status: 200 });\\n}\\n```\")",
+    "('pydantic', None)",
+    "('json_dict', None)",
+    "('tasks_output', [TaskOutput(description=\"Generate SQL to create a jobs table (if not exists) and a Next.js route handler at /app/api/jobs/route.ts to insert into Supabase.\\nPayload: {'notes': 'create table if not exists + POST (create) + GET (list) with filters by customer_id/tradie_id/status', 'route': '/api/jobs', 'table': 'jobs', 'fields': ['id', 'title', 'description', 'location', 'budget', 'customer_id', 'tradie_id', 'status', 'created_at'], 'feature': 'schema_jobs', 'required': ['title', 'description', 'location', 'customer_id']}\", name='generate_backend', expected_output='```sql\\n-- SQL here\\n```\\n```ts\\n// route handler here\\n```', summary='Generate SQL to create a jobs table (if not exists)...', raw=\"```sql\\nCREATE TABLE IF NOT EXISTS jobs (\\n    id SERIAL PRIMARY KEY,\\n    title VARCHAR(255) NOT NULL,\\n    description TEXT NOT NULL,\\n    location VARCHAR(255) NOT NULL,\\n    budget DECIMAL(10, 2),\\n    customer_id UUID NOT NULL,\\n    tradie_id UUID,\\n    status VARCHAR(50),\\n    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\\n    FOREIGN KEY (customer_id) REFERENCES users(id) ON DELETE CASCADE,\\n    FOREIGN KEY (tradie_id) REFERENCES tradies(id) ON DELETE SET NULL\\n);\\n```\\n```ts\\nimport { createClient } from '@supabase/supabase-js';\\nimport { NextResponse } from 'next/server';\\n\\nconst supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);\\n\\n// POST /api/jobs\\nexport async function POST(request: Request) {\\n    const { title, description, location, budget, customer_id, tradie_id, status } = await request.json();\\n\\n    const { data, error } = await supabase\\n        .from('jobs')\\n        .insert([{ title, description, location, budget, customer_id, tradie_id, status }]);\\n\\n    if (error) {\\n        return NextResponse.json({ error: error.message }, { status: 400 });\\n    }\\n\\n    return NextResponse.json({ data }, { status: 201 });\\n}\\n\\n// GET /api/jobs\\nexport async function GET(request: Request) {\\n    const { searchParams } = new URL(request.url);\\n    const customer_id = searchParams.get('customer_id');\\n    const tradie_id = searchParams.get('tradie_id');\\n    const status = searchParams.get('status');\\n\\n    let query = supabase\\n        .from('jobs')\\n        .select('*');\\n\\n    if (customer_id) {\\n        query = query.eq('customer_id', customer_id);\\n    }\\n    if (tradie_id) {\\n        query = query.eq('tradie_id', tradie_id);\\n    }\\n    if (status) {\\n        query = query.eq('status', status);\\n    }\\n\\n    const { data, error } = await query;\\n\\n    if (error) {\\n        return NextResponse.json({ error: error.message }, { status: 400 });\\n    }\\n\\n    return NextResponse.json(data, { status: 200 });\\n}\\n```\", pydantic=None, json_dict=None, agent='Supabase/backend generator', output_format=<OutputFormat.RAW: 'raw'>)])",
+    "('token_usage', UsageMetrics(total_tokens=801, prompt_tokens=309, cached_prompt_tokens=0, completion_tokens=492, successful_requests=1))"
+  ]
+}

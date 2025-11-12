@@ -1,0 +1,32 @@
+{
+  "task_id": "6fca1a5c-686d-4c80-a2b7-888139458482",
+  "task_type": "codegen_backend",
+  "payload": {
+    "notes": "open dispute, list disputes, filter by job_id/status",
+    "route": "/api/disputes",
+    "table": "disputes",
+    "fields": [
+      "id",
+      "job_id",
+      "customer_id",
+      "tradie_id",
+      "issue",
+      "evidence",
+      "status",
+      "created_at"
+    ],
+    "feature": "schema_disputes",
+    "required": [
+      "job_id",
+      "customer_id",
+      "issue"
+    ]
+  },
+  "result": [
+    "('raw', \"```sql\\nCREATE TABLE IF NOT EXISTS disputes (\\n    id SERIAL PRIMARY KEY,\\n    job_id INTEGER NOT NULL,\\n    customer_id INTEGER NOT NULL,\\n    tradie_id INTEGER,\\n    issue TEXT NOT NULL,\\n    evidence TEXT,\\n    status VARCHAR(50),\\n    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\\n    FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE\\n);\\n```\\n```ts\\nimport { NextApiRequest, NextApiResponse } from 'next';\\nimport { createClient } from '@supabase/supabase-js';\\n\\nconst supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);\\n\\nexport default async function handler(req: NextApiRequest, res: NextApiResponse) {\\n    if (req.method === 'POST') {\\n        const { job_id, customer_id, issue, evidence, status } = req.body;\\n\\n        // Validate required fields\\n        if (!job_id || !customer_id || !issue) {\\n            return res.status(400).json({ error: 'job_id, customer_id, and issue are required.' });\\n        }\\n\\n        const { data, error } = await supabase\\n            .from('disputes')\\n            .insert([{ job_id, customer_id, tradie_id: req.body.tradie_id, issue, evidence, status }]);\\n\\n        if (error) {\\n            return res.status(500).json({ error: error.message });\\n        }\\n\\n        return res.status(201).json({ data });\\n    } else {\\n        return res.status(405).json({ error: 'Method not allowed' });\\n    }\\n}\\n```\")",
+    "('pydantic', None)",
+    "('json_dict', None)",
+    "('tasks_output', [TaskOutput(description=\"Generate SQL to create a jobs table (if not exists) and a Next.js route handler at /app/api/jobs/route.ts to insert into Supabase.\\nPayload: {'notes': 'open dispute, list disputes, filter by job_id/status', 'route': '/api/disputes', 'table': 'disputes', 'fields': ['id', 'job_id', 'customer_id', 'tradie_id', 'issue', 'evidence', 'status', 'created_at'], 'feature': 'schema_disputes', 'required': ['job_id', 'customer_id', 'issue']}\", name='generate_backend', expected_output='```sql\\n-- SQL here\\n```\\n```ts\\n// route handler here\\n```', summary='Generate SQL to create a jobs table (if not exists)...', raw=\"```sql\\nCREATE TABLE IF NOT EXISTS disputes (\\n    id SERIAL PRIMARY KEY,\\n    job_id INTEGER NOT NULL,\\n    customer_id INTEGER NOT NULL,\\n    tradie_id INTEGER,\\n    issue TEXT NOT NULL,\\n    evidence TEXT,\\n    status VARCHAR(50),\\n    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\\n    FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE\\n);\\n```\\n```ts\\nimport { NextApiRequest, NextApiResponse } from 'next';\\nimport { createClient } from '@supabase/supabase-js';\\n\\nconst supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);\\n\\nexport default async function handler(req: NextApiRequest, res: NextApiResponse) {\\n    if (req.method === 'POST') {\\n        const { job_id, customer_id, issue, evidence, status } = req.body;\\n\\n        // Validate required fields\\n        if (!job_id || !customer_id || !issue) {\\n            return res.status(400).json({ error: 'job_id, customer_id, and issue are required.' });\\n        }\\n\\n        const { data, error } = await supabase\\n            .from('disputes')\\n            .insert([{ job_id, customer_id, tradie_id: req.body.tradie_id, issue, evidence, status }]);\\n\\n        if (error) {\\n            return res.status(500).json({ error: error.message });\\n        }\\n\\n        return res.status(201).json({ data });\\n    } else {\\n        return res.status(405).json({ error: 'Method not allowed' });\\n    }\\n}\\n```\", pydantic=None, json_dict=None, agent='Supabase/backend generator', output_format=<OutputFormat.RAW: 'raw'>)])",
+    "('token_usage', UsageMetrics(total_tokens=645, prompt_tokens=299, cached_prompt_tokens=0, completion_tokens=346, successful_requests=1))"
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "task_id": "9f7d2e68-c8d9-4e29-80df-1ef1ce684766",
+  "task_type": "codegen_backend",
+  "payload": {
+    "notes": "store notifications when jobs/disputes change",
+    "route": "/api/notifications",
+    "table": "notifications",
+    "fields": [
+      "id",
+      "user_id",
+      "type",
+      "data",
+      "read",
+      "created_at"
+    ],
+    "feature": "schema_notifications",
+    "required": [
+      "user_id",
+      "type"
+    ]
+  },
+  "result": [
+    "('raw', \"```sql\\nCREATE TABLE IF NOT EXISTS notifications (\\n    id SERIAL PRIMARY KEY,\\n    user_id UUID NOT NULL,\\n    type VARCHAR(255) NOT NULL,\\n    data JSONB,\\n    read BOOLEAN DEFAULT FALSE,\\n    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,\\n    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE\\n);\\n```\\n```ts\\nimport { NextResponse } from 'next/server';\\nimport { createClient } from '@supabase/supabase-js';\\n\\nconst supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;\\nconst supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;\\nconst supabase = createClient(supabaseUrl, supabaseKey);\\n\\nexport async function POST(request: Request) {\\n    const { user_id, type, data } = await request.json();\\n\\n    if (!user_id || !type) {\\n        return NextResponse.json({ error: 'user_id and type are required' }, { status: 400 });\\n    }\\n\\n    const { data: notification, error } = await supabase\\n        .from('notifications')\\n        .insert([{ user_id, type, data }])\\n        .single();\\n\\n    if (error) {\\n        return NextResponse.json({ error: error.message }, { status: 500 });\\n    }\\n\\n    return NextResponse.json(notification, { status: 201 });\\n}\\n```\")",
+    "('pydantic', None)",
+    "('json_dict', None)",
+    "('tasks_output', [TaskOutput(description=\"Generate SQL to create a jobs table (if not exists) and a Next.js route handler at /app/api/jobs/route.ts to insert into Supabase.\\nPayload: {'notes': 'store notifications when jobs/disputes change', 'route': '/api/notifications', 'table': 'notifications', 'fields': ['id', 'user_id', 'type', 'data', 'read', 'created_at'], 'feature': 'schema_notifications', 'required': ['user_id', 'type']}\", name='generate_backend', expected_output='```sql\\n-- SQL here\\n```\\n```ts\\n// route handler here\\n```', summary='Generate SQL to create a jobs table (if not exists)...', raw=\"```sql\\nCREATE TABLE IF NOT EXISTS notifications (\\n    id SERIAL PRIMARY KEY,\\n    user_id UUID NOT NULL,\\n    type VARCHAR(255) NOT NULL,\\n    data JSONB,\\n    read BOOLEAN DEFAULT FALSE,\\n    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,\\n    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE\\n);\\n```\\n```ts\\nimport { NextResponse } from 'next/server';\\nimport { createClient } from '@supabase/supabase-js';\\n\\nconst supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;\\nconst supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;\\nconst supabase = createClient(supabaseUrl, supabaseKey);\\n\\nexport async function POST(request: Request) {\\n    const { user_id, type, data } = await request.json();\\n\\n    if (!user_id || !type) {\\n        return NextResponse.json({ error: 'user_id and type are required' }, { status: 400 });\\n    }\\n\\n    const { data: notification, error } = await supabase\\n        .from('notifications')\\n        .insert([{ user_id, type, data }])\\n        .single();\\n\\n    if (error) {\\n        return NextResponse.json({ error: error.message }, { status: 500 });\\n    }\\n\\n    return NextResponse.json(notification, { status: 201 });\\n}\\n```\", pydantic=None, json_dict=None, agent='Supabase/backend generator', output_format=<OutputFormat.RAW: 'raw'>)])",
+    "('token_usage', UsageMetrics(total_tokens=571, prompt_tokens=277, cached_prompt_tokens=0, completion_tokens=294, successful_requests=1))"
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "task_id": "4b24b6fe-095f-4808-9f9d-1d3b85dbdd68",
+  "task_type": "codegen_backend",
+  "payload": {
+    "notes": "basic messaging per job",
+    "route": "/api/messages",
+    "table": "messages",
+    "fields": [
+      "id",
+      "job_id",
+      "sender_id",
+      "receiver_id",
+      "body",
+      "created_at"
+    ],
+    "feature": "schema_messages",
+    "required": [
+      "job_id",
+      "sender_id",
+      "body"
+    ]
+  },
+  "result": [
+    "('raw', \"```sql\\n-- Create jobs table if not exists\\nCREATE TABLE IF NOT EXISTS jobs (\\n    id SERIAL PRIMARY KEY,\\n    title VARCHAR(255) NOT NULL,\\n    description TEXT,\\n    status VARCHAR(50),\\n    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\\n    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\\n);\\n```\\n```ts\\n// Next.js route handler to insert into Supabase\\nimport { NextResponse } from 'next/server';\\nimport { createClient } from '@supabase/supabase-js';\\n\\nconst supabaseUrl = process.env.SUPABASE_URL;\\nconst supabaseKey = process.env.SUPABASE_ANON_KEY;\\nconst supabase = createClient(supabaseUrl, supabaseKey);\\n\\nexport async function POST(request: Request) {\\n    const { job_id, sender_id, body } = await request.json();\\n\\n    // Validate required fields\\n    if (!job_id || !sender_id || !body) {\\n        return NextResponse.json({ error: 'Missing required fields: job_id, sender_id, body' }, { status: 400 });\\n    }\\n\\n    const { data, error } = await supabase\\n        .from('messages')\\n        .insert([{ job_id, sender_id, body }]);\\n\\n    if (error) {\\n        return NextResponse.json({ error: error.message }, { status: 500 });\\n    }\\n\\n    return NextResponse.json({ message: 'Message inserted successfully', data }, { status: 201 });\\n}\\n```\")",
+    "('pydantic', None)",
+    "('json_dict', None)",
+    "('tasks_output', [TaskOutput(description=\"Generate SQL to create a jobs table (if not exists) and a Next.js route handler at /app/api/jobs/route.ts to insert into Supabase.\\nPayload: {'notes': 'basic messaging per job', 'route': '/api/messages', 'table': 'messages', 'fields': ['id', 'job_id', 'sender_id', 'receiver_id', 'body', 'created_at'], 'feature': 'schema_messages', 'required': ['job_id', 'sender_id', 'body']}\", name='generate_backend', expected_output='```sql\\n-- SQL here\\n```\\n```ts\\n// route handler here\\n```', summary='Generate SQL to create a jobs table (if not exists)...', raw=\"```sql\\n-- Create jobs table if not exists\\nCREATE TABLE IF NOT EXISTS jobs (\\n    id SERIAL PRIMARY KEY,\\n    title VARCHAR(255) NOT NULL,\\n    description TEXT,\\n    status VARCHAR(50),\\n    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\\n    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\\n);\\n```\\n```ts\\n// Next.js route handler to insert into Supabase\\nimport { NextResponse } from 'next/server';\\nimport { createClient } from '@supabase/supabase-js';\\n\\nconst supabaseUrl = process.env.SUPABASE_URL;\\nconst supabaseKey = process.env.SUPABASE_ANON_KEY;\\nconst supabase = createClient(supabaseUrl, supabaseKey);\\n\\nexport async function POST(request: Request) {\\n    const { job_id, sender_id, body } = await request.json();\\n\\n    // Validate required fields\\n    if (!job_id || !sender_id || !body) {\\n        return NextResponse.json({ error: 'Missing required fields: job_id, sender_id, body' }, { status: 400 });\\n    }\\n\\n    const { data, error } = await supabase\\n        .from('messages')\\n        .insert([{ job_id, sender_id, body }]);\\n\\n    if (error) {\\n        return NextResponse.json({ error: error.message }, { status: 500 });\\n    }\\n\\n    return NextResponse.json({ message: 'Message inserted successfully', data }, { status: 201 });\\n}\\n```\", pydantic=None, json_dict=None, agent='Supabase/backend generator', output_format=<OutputFormat.RAW: 'raw'>)])",
+    "('token_usage', UsageMetrics(total_tokens=593, prompt_tokens=278, cached_prompt_tokens=0, completion_tokens=315, successful_requests=1))"
+  ]
+}
