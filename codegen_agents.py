@@ -1,7 +1,7 @@
 from crewai import Agent, Task
 from crewai.llm import LLM
 
-llm = LLM(model="gpt-4o-mini")
+llm = LLM(model="gpt-4o")
 
 frontend_agent = Agent(
     role="Next.js frontend generator",
