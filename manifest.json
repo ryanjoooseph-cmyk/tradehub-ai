@@ -1,102 +1,44 @@
-{
-  "jobs": {
-    "backend": [
-      {
-        "feature": "jobs_core",
-        "table": "jobs",
-        "route": "/api/jobs",
-        "notes": "create jobs table if not exists, list by customer_id/tradie_id, create job"
-      },
-      {
-        "feature": "jobs_status",
-        "route": "/api/jobs/status",
-        "notes": "update job status: open, quoted, scheduled, in_progress, completed, disputed"
-      }
-    ],
-    "frontend": [
-      {
-        "feature": "customer_jobs_dashboard",
-        "route": "/dashboard/jobs",
-        "notes": "list jobs for current customer"
-      },
-      {
-        "feature": "tradie_jobs_dashboard",
-        "route": "/dashboard/tradie",
-        "notes": "list jobs for current tradie"
-      }
-    ]
+[
+  {
+    "task_type": "codegen_backend",
+    "feature": "jobs_core",
+    "route": "/api/jobs",
+    "notes": "create jobs table if not exists, list jobs by customer_id and tradie_id, create job"
   },
-  "tradies": {
-    "backend": [
-      {
-        "feature": "tradies_core",
-        "table": "tradies",
-        "route": "/api/tradies",
-        "notes": "create tradies table, filter by trade_type and service_area"
-      }
-    ],
-    "frontend": [
-      {
-        "feature": "tradies_search_page",
-        "route": "/tradies/search",
-        "notes": "search/browse tradies"
-      }
-    ]
+  {
+    "task_type": "codegen_frontend",
+    "feature": "jobs_dashboard",
+    "route": "/dashboard/jobs",
+    "notes": "Next.js page listing jobs from /api/jobs"
   },
-  "disputes": {
-    "backend": [
-      {
-        "feature": "disputes_core",
-        "table": "disputes",
-        "route": "/api/disputes",
-        "notes": "open dispute, list disputes, update status"
-      }
-    ],
-    "frontend": [
-      {
-        "feature": "disputes_list",
-        "route": "/disputes",
-        "notes": "list disputes for current user"
-      },
-      {
-        "feature": "disputes_new",
-        "route": "/disputes/new",
-        "notes": "form to open dispute on a job"
-      }
-    ]
+  {
+    "task_type": "codegen_backend",
+    "feature": "tradies_core",
+    "route": "/api/tradies",
+    "notes": "create tradies table with filters for trade_type and service_area"
   },
-  "quotes": {
-    "backend": [
-      {
-        "feature": "quotes_core",
-        "table": "quotes",
-        "route": "/api/quotes",
-        "notes": "submit quote for a job; list quotes for job"
-      }
-    ],
-    "frontend": [
-      {
-        "feature": "quotes_for_job",
-        "route": "/jobs/[id]/quotes",
-        "notes": "list quotes for a job with accept/reject"
-      }
-    ]
+  {
+    "task_type": "codegen_backend",
+    "feature": "disputes_core",
+    "route": "/api/disputes",
+    "notes": "open dispute, list disputes, update dispute status"
   },
-  "invoices": {
-    "backend": [
-      {
-        "feature": "invoices_core",
-        "table": "invoices",
-        "route": "/api/invoices",
-        "notes": "create invoice for job, update status"
-      }
-    ],
-    "frontend": [
-      {
-        "feature": "invoices_list",
-        "route": "/invoices",
-        "notes": "list invoices for current user"
-      }
-    ]
+  {
+    "task_type": "codegen_frontend",
+    "feature": "admin_disputes",
+    "route": "/admin/disputes",
+    "notes": "admin disputes table pulling from /api/disputes"
+  },
+  {
+    "task_type": "codegen_backend",
+    "feature": "ai_job_scoper_backend",
+    "route": "/api/ai/job-scope",
+    "notes": "accept text/image refs and return structured job scope json"
+  },
+  {
+    "task_type": "codegen_frontend",
+    "feature": "ai_job_scoper_frontend",
+    "route": "/ai/job-scope",
+    "notes": "form that posts to /api/ai/job-scope and renders structured result"
   }
-}
+]
