@@ -12,4 +12,4 @@ while True:
     subprocess.run(["python", "sync_to_github.py"])
 
     # 4) sleep
-    time.sleep(5)
+    time.sleep(2)
