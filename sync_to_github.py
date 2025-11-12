@@ -7,7 +7,7 @@ from datetime import datetime
 
 DB_DSN = os.environ["TRADEHUB_DB_DSN"]
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
-TARGET_REPO = os.environ.get("TARGET_REPO")  # e.g. "yourname/tradehub-app"
+TARGET_REPO = os.environ.get("TARGET_REPO")  # e.g. "ryanjoooseph-cmyk/tradehub-app"
 
 if not GITHUB_TOKEN:
     raise RuntimeError("GITHUB_TOKEN not set")
@@ -29,15 +29,9 @@ def fetch_done_tasks(limit: int = 5):
                 ORDER BY updated_at ASC
                 LIMIT %s;
             """, (limit,))
-            rows = cur.fetchall()
-            return rows
+            return cur.fetchall()
     finally:
         conn.close()
-
-def mark_synced(task_id):
-    # we can reuse error column or add a tiny flag – for now just leave as done
-    # if you want to avoid re-syncing, you can update result to NULL or add a column
-    pass
 
 def main():
     tasks = fetch_done_tasks()
@@ -49,14 +43,16 @@ def main():
         repo_url = f"https://{GITHUB_TOKEN}:x-oauth-basic@github.com/{TARGET_REPO}.git"
         subprocess.check_call(["git", "clone", repo_url, tmpdir])
 
-        # make sure folder exists
+        # set identity so commit works in Render
+        subprocess.check_call(["git", "-C", tmpdir, "config", "user.email", "bot@tradehub.local"])
+        subprocess.check_call(["git", "-C", tmpdir, "config", "user.name", "TradeHub Bot"])
+
         ai_dir = os.path.join(tmpdir, "app", "ai_generated")
         os.makedirs(ai_dir, exist_ok=True)
 
         for (task_id, task_type, payload, result) in tasks:
             payload = payload or {}
             feature = payload.get("feature") or f"task_{task_id}"
-            # normalize to txt for now – we can split TSX later
             out_path = os.path.join(ai_dir, f"{feature}.txt")
             with open(out_path, "w") as f:
                 f.write(json.dumps({
@@ -66,11 +62,8 @@ def main():
                     "result": result,
                 }, indent=2))
 
-            mark_synced(task_id)
-
         now = datetime.utcnow().isoformat()
         subprocess.check_call(["git", "-C", tmpdir, "add", "."])
-        # if there's nothing to commit, this will fail – so wrap it
         try:
             subprocess.check_call(["git", "-C", tmpdir, "commit", "-m", f"ai sync {now}"])
             subprocess.check_call(["git", "-C", tmpdir, "push"])
