@@ -1,0 +1,102 @@
+{
+  "jobs": {
+    "backend": [
+      {
+        "feature": "jobs_core",
+        "table": "jobs",
+        "route": "/api/jobs",
+        "notes": "create table if not exists + list by customer/tradie + create"
+      },
+      {
+        "feature": "jobs_status",
+        "route": "/api/jobs/status",
+        "notes": "update job status: open, quoted, scheduled, in_progress, completed, disputed"
+      }
+    ],
+    "frontend": [
+      {
+        "feature": "customer_jobs_dashboard",
+        "route": "/dashboard/jobs",
+        "notes": "list jobs for current customer"
+      },
+      {
+        "feature": "tradie_jobs_dashboard",
+        "route": "/dashboard/tradie",
+        "notes": "list jobs for current tradie"
+      }
+    ]
+  },
+  "tradies": {
+    "backend": [
+      {
+        "feature": "tradies_core",
+        "table": "tradies",
+        "route": "/api/tradies",
+        "notes": "create tradies table + filter by trade_type/service_area"
+      }
+    ],
+    "frontend": [
+      {
+        "feature": "tradies_search_page",
+        "route": "/tradies/search",
+        "notes": "Next.js page to search tradies"
+      }
+    ]
+  },
+  "disputes": {
+    "backend": [
+      {
+        "feature": "disputes_core",
+        "table": "disputes",
+        "route": "/api/disputes",
+        "notes": "open dispute, list disputes, update status"
+      }
+    ],
+    "frontend": [
+      {
+        "feature": "disputes_list",
+        "route": "/disputes",
+        "notes": "list disputes for current user"
+      },
+      {
+        "feature": "disputes_new",
+        "route": "/disputes/new",
+        "notes": "form to open dispute"
+      }
+    ]
+  },
+  "quotes": {
+    "backend": [
+      {
+        "feature": "quotes_core",
+        "table": "quotes",
+        "route": "/api/quotes",
+        "notes": "submit quote for a job; list quotes for job"
+      }
+    ],
+    "frontend": [
+      {
+        "feature": "quotes_for_job",
+        "route": "/jobs/[id]/quotes",
+        "notes": "list quotes for a job"
+      }
+    ]
+  },
+  "invoices": {
+    "backend": [
+      {
+        "feature": "invoices_core",
+        "table": "invoices",
+        "route": "/api/invoices",
+        "notes": "create invoice for a job; update status"
+      }
+    ],
+    "frontend": [
+      {
+        "feature": "invoices_list",
+        "route": "/invoices",
+        "notes": "list invoices for current user"
+      }
+    ]
+  }
+}
