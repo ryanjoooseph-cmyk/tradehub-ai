@@ -2,14 +2,14 @@ import time
 import subprocess
 
 while True:
-    # 1) run one task
+    # 1) make sure required tasks exist
+    subprocess.run(["python", "feed_from_manifest.py"])
+
+    # 2) run one agent task
     subprocess.run(["python", "agent_dispatcher.py"])
 
-    # 2) (later) feed from manifest
-    # subprocess.run(["python", "feed_from_manifest.py"])
-
-    # 3) (later) sync finished tasks
-    # subprocess.run(["python", "sync_to_github.py"])
+    # 3) try to sync finished tasks into app repo (no-op if env missing)
+    subprocess.run(["python", "sync_to_github.py"])
 
     # 4) sleep
     time.sleep(2)
