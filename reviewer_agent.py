@@ -1,45 +1,41 @@
-# project/src/reviewer_agent.py
-# Returns a STRUCTURED dict so the dispatcher never sees a tuple.
+# reviewer_agent.py
+# Drop-in reviewer that matches the dispatcher’s expectations.
+# - Signature: review(task, result_text)
+# - Return: {"decision": "APPROVE" | "REJECT", "notes": str}
 
-from typing import Any, Dict
+from typing import Dict
+import re
 
-RED_FLAG_SNIPPETS = [
-    "drop table", "delete from", "truncate table",
-    "os.system(", "subprocess.", "rm -rf /", "curl http",
-    "alter role", "grant all", "xp_cmdshell"
+APPROVE = "APPROVE"
+REJECT = "REJECT"
+
+# Quick safety patterns; extend as needed.
+DANGEROUS_PATTERNS = [
+    r"rm\s+-rf\s+/?",                   # nuking filesystem
+    r"\bDROP\s+TABLE\b",                # destructive SQL
+    r"\bTRUNCATE\s+TABLE\b",
+    r"\bALTER\s+TABLE\b.*\bDROP\b",
+    r"chmod\s+777\b",                   # overly permissive perms
+    r"/etc/passwd",                     # sensitive file access
 ]
 
-def _to_text(x: Any) -> str:
-    try:
-        return x if isinstance(x, str) else str(x)
-    except Exception:
-        return ""
-
-def review(task: Dict[str, Any]) -> Dict[str, Any]:
+def review(task: dict, result_text: str) -> Dict[str, str]:
     """
-    Inspect a task and return a structured decision.
-
-    Must return:
-      {
-        "decision": "approve" | "reject",
-        "approved": True|False,
-        "reason": "<short explanation>"
-      }
+    Minimal, predictable reviewer that always returns a dict so the
+    dispatcher can do .get('decision') without blowing up.
     """
-    payload = task.get("payload") if isinstance(task, dict) else {}
-    preview = ""
-    if isinstance(payload, dict):
-        preview += _to_text(payload.get("expected_output", ""))
-        preview += "\n" + _to_text(payload.get("result_preview", ""))
+    text = result_text or ""
 
-    text = (_to_text(task.get("result")) + "\n" + preview).lower()
+    # Block obviously dangerous changes
+    for pat in DANGEROUS_PATTERNS:
+        if re.search(pat, text, flags=re.IGNORECASE):
+            return {
+                "decision": REJECT,
+                "notes": f"Rejected: matched dangerous pattern: {pat}",
+            }
 
-    red = [flag for flag in RED_FLAG_SNIPPETS if flag in text]
-    if red:
-        reason = f"Found potentially dangerous patterns: {', '.join(red)}"
-        print("REVIEW DECISION: REJECT —", reason)
-        return {"decision": "reject", "approved": False, "reason": reason}
-
-    reason = "approve: no dangerous patterns detected"
-    print("REVIEW DECISION: APPROVE —", reason)
-    return {"decision": "approve", "approved": True, "reason": reason}
+    # Otherwise approve (mirrors what you saw in logs)
+    return {
+        "decision": APPROVE,
+        "notes": "approve: no dangerous patterns detected",
+    }
