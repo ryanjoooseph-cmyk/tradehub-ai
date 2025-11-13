@@ -1,36 +1,25 @@
 # reviewer_agent.py
-# Simple static reviewer that always returns a dict the dispatcher can consume.
-# Accepts extra args to avoid "takes 1 positional argument but 2 were given".
+# Minimal, deterministic reviewer. Returns a dict with a decision and reason.
 
-from typing import Any, Dict
+from __future__ import annotations
+from typing import Dict, Any
 
 APPROVE = "APPROVE"
-REJECT = "REJECT"
+REJECT  = "REJECT"
 
-def review(task: Dict[str, Any], *args, **kwargs) -> Dict[str, Any]:
+def review(task: Dict[str, Any]) -> Dict[str, str]:
     """
-    Normalize to a dict so the caller can always do .get(...).
-    Decide APPROVE/REJECT with a very simple heuristic:
-      - If task payload has key 'danger' truthy -> REJECT
-      - else APPROVE
+    Input: task dict with at least {"feature": "<name>", ...}
+    Output: {"decision": "APPROVE"|"REJECT", "reason": "<text>"}
     """
-    payload = task.get("payload", {}) if isinstance(task, dict) else {}
-    reason = "approve: no dangerous patterns detected"
-    decision = APPROVE
-    try:
-        if isinstance(payload, dict) and payload.get("danger"):
-            decision = REJECT
-            reason = "reject: flagged by payload['danger']"
-    except Exception as _:
-        # Be conservative but never crash the caller
-        decision = APPROVE
-        reason = "approve: fallback path"
+    name = str(task.get("feature", "")).strip()
+    if not name:
+        return {"decision": REJECT, "reason": "Missing 'feature' field."}
 
-    return {
-        "decision": decision,
-        "reason": reason,
-        "meta": {
-            "source": "reviewer_agent.py",
-            "version": "1.0.0",
-        },
-    }
+    # Super simple guardrails; extend as needed
+    bad = {"drop database", "rm -rf", "exfiltrate", "cryptominer"}
+    blob = (name + " " + str(task)).lower()
+    if any(b in blob for b in bad):
+        return {"decision": REJECT, "reason": "Dangerous pattern detected."}
+
+    return {"decision": APPROVE, "reason": "approve: no dangerous patterns detected"}
