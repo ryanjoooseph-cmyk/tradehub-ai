@@ -1,61 +1,33 @@
-#!/usr/bin/env python3
-import json, os, sys
+# feed_from_manifest.py
+# Harden manifest ingestion. Accepts strings OR dict items in the manifest list.
 
-MANIFEST_PATH = os.environ.get("MANIFEST_PATH", "manifest.json")
+import json
+from typing import Any, Dict, List, Union
+from pathlib import Path
 
-def _normalize(obj):
-    tasks = []
-    if isinstance(obj, dict):
-        if "tasks" in obj:
-            return _normalize(obj["tasks"])
-        feature = obj.get("feature") or obj.get("name") or obj.get("id") or str(obj)
-        d = {k: v for k, v in obj.items() if k != "feature"}
-        d["feature"] = feature
-        tasks.append(d)
-    elif isinstance(obj, list):
-        for it in obj:
-            if isinstance(it, dict):
-                feature = it.get("feature") or it.get("name") or it.get("id") or str(it)
-                d = {k: v for k, v in it.items() if k != "feature"}
-                d["feature"] = feature
-                tasks.append(d)
-            elif isinstance(it, str):
-                s = it.strip()
-                if s:
-                    tasks.append({"feature": s})
-    elif isinstance(obj, str):
-        for line in obj.splitlines():
-            line = line.strip()
-            if not line or line.startswith("//"):
-                continue
-            try:
-                tasks.extend(_normalize(json.loads(line)))
-            except Exception:
-                tasks.append({"feature": line})
-    else:
-        tasks.append({"feature": str(obj)})
-    return tasks
+MANIFEST_PATH = Path(__file__).resolve().parent.parent / "manifest.json"
 
-def load_manifest(path):
-    if not os.path.exists(path):
-        print(f"[feed] manifest not found: {path} — nothing to seed.")
-        return []
-    raw = open(path, "r", encoding="utf-8").read()
-    try:
-        return _normalize(json.loads(raw))
-    except json.JSONDecodeError:
-        return _normalize(raw)
+def _as_task(item: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
+    if isinstance(item, str):
+        return {"feature": item, "payload": {"feature": item}}
+    if isinstance(item, dict):
+        feature = item.get("feature") or item.get("name") or "unnamed"
+        payload = item.get("payload", {})
+        # allow simple dict manifest entries to be the payload
+        if not payload and any(k for k in item.keys() if k not in ("feature","name","payload")):
+            payload = {k: v for k, v in item.items() if k not in ("feature","name","payload")}
+        return {"feature": feature, "payload": payload}
+    # unknown type → stringify
+    return {"feature": "unknown", "payload": {"raw": str(item)}}
 
-def main():
-    tasks = load_manifest(MANIFEST_PATH)
-    print(f"[feed] loaded {len(tasks)} task definitions")
-    # Intentionally a no-op feeder (don’t crash the loop if seeding isn’t needed).
-    # If you later wire Supabase inserts here, keep the try/except pattern.
-    return 0
+def load_tasks() -> List[Dict[str, Any]]:
+    raw = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    # raw may be {"tasks":[...]} or just [...]
+    items = raw.get("tasks") if isinstance(raw, dict) and "tasks" in raw else raw
+    if not isinstance(items, list):
+        raise ValueError("manifest.json must be a list or an object with 'tasks' list")
+    return [_as_task(it) for it in items]
 
 if __name__ == "__main__":
-    try:
-        sys.exit(main())
-    except Exception as e:
-        print(f"[feed] non-fatal: {e}")
-        sys.exit(0)
+    tasks = load_tasks()
+    print(f"[feed] loaded {len(tasks)} task definitions")
