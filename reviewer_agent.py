@@ -1,58 +1,66 @@
 # project/src/reviewer_agent.py
-# Approve-by-default reviewer with simple guardrails.
+# Approve-by-default reviewer that returns a DICT (dispatcher expects .get()).
+
 import os, re, json
-from typing import Any, Tuple
+from typing import Any, Dict, List
 
 STRICT = (os.getenv("REVIEW_STRICT", "report").lower() == "enforce")
 
-# Patterns that are truly risky; expand later as needed.
-DANGEROUS = [
+# Very basic risk patterns; expand later.
+DANGEROUS: List[str] = [
     r"\bdrop\s+table\b",
     r"\balter\s+table\b.*\bdrop\s+column\b",
     r"\bdelete\s+from\b(?!.*\bwhere\b)",     # DELETE without WHERE
     r"rm\s+-rf\s+/",
     r"OPENAI_API_KEY\s*=",
-    r"sk-[A-Za-z0-9]{10,}",                  # keys in text
+    r"sk-[A-Za-z0-9]{10,}",                  # API keys
 ]
 
 def _collect_text(args, kwargs) -> str:
-    chunks = []
+    parts = []
     for a in args:
         if isinstance(a, str):
-            chunks.append(a)
+            parts.append(a)
         else:
             try:
-                chunks.append(json.dumps(a, default=str)[:8000])
+                parts.append(json.dumps(a, default=str)[:8000])
             except Exception:
                 pass
     if kwargs:
         try:
-            chunks.append(json.dumps(kwargs, default=str)[:8000])
+            parts.append(json.dumps(kwargs, default=str)[:8000])
         except Exception:
             pass
-    return "\n".join(chunks)
+    return "\n".join(parts)
 
-def review(*args: Any, **kwargs: Any) -> Tuple[bool, str]:
+def review(*args: Any, **kwargs: Any) -> Dict[str, Any]:
     """
-    Accepts anything (string, dict, etc.) and returns (approved, reason).
-    In 'report' mode we approve and log reasons; in 'enforce' we reject on DANGEROUS.
+    Returns a dict:
+      {
+        "approved": bool,
+        "reason": str,
+        "findings": [patterns],
+        "strict": bool
+      }
+    Dispatcher calls decision.get("approved"), so dict is required.
     """
     text = _collect_text(args, kwargs)
-    findings = []
-    for pat in DANGEROUS:
-        if re.search(pat, text, flags=re.IGNORECASE | re.MULTILINE):
-            findings.append(pat)
+    findings = [pat for pat in DANGEROUS
+                if re.search(pat, text, flags=re.IGNORECASE | re.MULTILINE)]
 
     if findings and STRICT:
         reason = f"reject: matched dangerous patterns: {findings}"
+        decision = {"approved": False, "reason": reason, "findings": findings, "strict": True}
         print(f"REVIEW DECISION: REJECT — {reason}")
-        return (False, reason)
+        return decision
 
     if findings and not STRICT:
         reason = f"approve(report): risky patterns found but STRICT=off: {findings}"
+        decision = {"approved": True, "reason": reason, "findings": findings, "strict": False}
         print(f"REVIEW DECISION: APPROVE (report-only) — {reason}")
-        return (True, reason)
+        return decision
 
     reason = "approve: no dangerous patterns detected"
+    decision = {"approved": True, "reason": reason, "findings": [], "strict": STRICT}
     print(f"REVIEW DECISION: APPROVE — {reason}")
-    return (True, reason)
+    return decision
