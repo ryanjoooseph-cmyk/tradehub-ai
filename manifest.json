@@ -1,64 +1,239 @@
-{
-  "version": "2025-11-13",
-  "global_constraints": {
-    "stack": "Next.js 14 + TypeScript + Supabase (Postgres, RLS) + Edge functions",
-    "style": "minimal, typed, testable; idempotent SQL; no breaking migrations",
-    "output": "STRICT_JSON_DIFF {\"file_path\",\"operation\",\"content\"}"
+[
+  {
+    "feature": "schema_jobs",
+    "entity": "jobs",
+    "spec": {
+      "columns": {
+        "id": "uuid primary key default gen_random_uuid()",
+        "title": "text not null",
+        "description": "text not null",
+        "budget": "numeric(12,2) not null",
+        "currency": "text not null default 'AUD'",
+        "customer_id": "uuid not null",
+        "tradie_id": "uuid",
+        "status": "text not null default 'open'",
+        "location": "text",
+        "created_at": "timestamp with time zone not null default now()",
+        "updated_at": "timestamp with time zone not null default now()"
+      },
+      "indexes": ["(customer_id)", "(tradie_id)", "(status)"],
+      "fkeys": {
+        "customer_id": "references auth.users(id)",
+        "tradie_id": "references auth.users(id)"
+      }
+    },
+    "acceptance": [
+      "Idempotent SQL: CREATE TABLE IF NOT EXISTS and ALTERs",
+      "Add sensible indexes and foreign keys",
+      "SQL saved to migrations or sql/ folder"
+    ]
   },
-  "epics": [
-    {"key":"jobs_core","goal":"Jobs CRUD + status machine + audit log"},
-    {"key":"quotes_core","goal":"Quotes CRUD + acceptance + conversion to job"},
-    {"key":"escrow_core","goal":"Milestone escrow modeling + API (no payouts yet)"},
-    {"key":"disputes_core","goal":"Disputes capture + evidence + status flow"},
-    {"key":"matching_core","goal":"Matchmaker: radius/skills/eta/price rank"},
-    {"key":"trust_graph","goal":"Event → score model + API"},
-    {"key":"materials_core","goal":"Materials lines + PO draft"},
-    {"key":"notifications","goal":"Email/SMS/Push templating + events"},
-    {"key":"analytics_core","goal":"Ops dashboard SQL + API"},
-    {"key":"admin_core","goal":"Admin screens for moderation/escalation"}
-  ],
-  "tasks": [
-    {"feature":"jobs_core","id":"jobs_api_routes","desc":"Create Next.js route /api/jobs (GET list, POST create) with validation."},
-    {"feature":"jobs_core","id":"jobs_table","desc":"SQL create table jobs (id, title, description, location, budget, customer_id, tradie_id, status, created_at)."},
-    {"feature":"jobs_core","id":"jobs_status_machine","desc":"Add enum + server action to move statuses (draft→posted→quoted→in_progress→completed→closed, cancelled)."},
-    {"feature":"jobs_core","id":"jobs_audit","desc":"Audit table job_events; write on each state change."},
 
-    {"feature":"quotes_core","id":"quotes_table","desc":"SQL create table quotes (id, job_id FK, tradie_id, amount, notes, expires_at, status)."},
-    {"feature":"quotes_core","id":"quotes_api","desc":"Routes /api/quotes with POST (create), PATCH (accept/decline)."},
-    {"feature":"quotes_core","id":"convert_quote_to_job","desc":"Server action: accept quote → assign tradie, set job status=in_progress."},
+  {
+    "feature": "api_jobs",
+    "entity": "jobs",
+    "spec": {
+      "routes": ["GET /api/jobs", "POST /api/jobs", "GET /api/jobs/:id", "PATCH /api/jobs/:id"],
+      "auth": "RLS-friendly; only owner or assigned tradie can PATCH",
+      "validation": "Zod schemas for input/output"
+    },
+    "acceptance": [
+      "Next.js 14 Route Handlers at app/api/jobs/route.ts",
+      "TypeScript, Zod, proper error handling",
+      "Uses Supabase client (server) for DB calls"
+    ]
+  },
 
-    {"feature":"escrow_core","id":"escrow_tables","desc":"SQL: escrows(id, job_id, state, currency, held_amount, released_amount); milestones(id, escrow_id, title, amount, state)."},
-    {"feature":"escrow_core","id":"escrow_api","desc":"Routes /api/escrows (create from accepted quote), /api/milestones (create/release/request)."},
+  {
+    "feature": "page_jobs",
+    "entity": "jobs",
+    "spec": {
+      "pages": [
+        "app/jobs/new/page.tsx (form: title, description, budget, currency, location)",
+        "app/jobs/page.tsx (list with server-side fetch of recent jobs)"
+      ],
+      "ui": "React Hook Form + Zod; posts to /api/jobs"
+    },
+    "acceptance": [
+      "Pages render without placeholders",
+      "Form validates and creates a job via API",
+      "Basic styling with your existing app styles"
+    ]
+  },
 
-    {"feature":"disputes_core","id":"disputes_table","desc":"SQL disputes(id, job_id, milestone_id, opened_by, reason, state) + evidence table with file refs."},
-    {"feature":"disputes_core","id":"disputes_api","desc":"Routes to open dispute, attach evidence, resolve (holdback/refund/release)."},
-    
-    {"feature":"matching_core","id":"tradie_profile_schema","desc":"SQL: tradie_profiles(skills[], radius_km, base_location, license_no, availability)."},
-    {"feature":"matching_core","id":"matcher_service","desc":"Edge function rank_tradies(job) → list by distance/skills/eta/price history."},
+  {
+    "feature": "schema_invoices",
+    "entity": "invoices",
+    "spec": {
+      "columns": {
+        "id": "uuid primary key default gen_random_uuid()",
+        "job_id": "uuid not null",
+        "amount": "numeric(12,2) not null",
+        "currency": "text not null default 'AUD'",
+        "status": "text not null default 'draft'",
+        "due_date": "date",
+        "created_at": "timestamp with time zone not null default now()",
+        "updated_at": "timestamp with time zone not null default now()"
+      },
+      "indexes": ["(job_id)", "(status)"],
+      "fkeys": { "job_id": "references jobs(id) on delete cascade" }
+    },
+    "acceptance": [
+      "Idempotent SQL with indexes and FK",
+      "Saved to migrations or sql/"
+    ]
+  },
 
-    {"feature":"trust_graph","id":"trust_events","desc":"SQL event_stream (actor, subject, verb, score_delta) + score table."},
-    {"feature":"trust_graph","id":"trust_api","desc":"Route to fetch trust score for user/tradie + reasons."},
+  {
+    "feature": "api_invoices",
+    "entity": "invoices",
+    "spec": {
+      "routes": ["GET /api/invoices?job_id=", "POST /api/invoices", "PATCH /api/invoices/:id"],
+      "validation": "Zod; amount > 0"
+    },
+    "acceptance": [
+      "Route Handlers at app/api/invoices/route.ts",
+      "Secure selects by job owner or assigned tradie"
+    ]
+  },
 
-    {"feature":"materials_core","id":"materials_tables","desc":"SQL materials_lines(job_id, sku, qty, unit_price, supplier) + purchase_orders."},
-    {"feature":"materials_core","id":"materials_api","desc":"Routes to upsert materials lines + draft PO export (CSV)."},
-    
-    {"feature":"notifications","id":"templates","desc":"Tables + simple renderer for email/SMS (job posted, quote received, milestone ready)."},
-    {"feature":"notifications","id":"hooks","desc":"Emit notifications from key state changes (jobs, quotes, milestones, disputes)."},
+  {
+    "feature": "page_invoices",
+    "entity": "invoices",
+    "spec": {
+      "pages": [
+        "app/invoices/new/page.tsx (job selector + amount/currency/due_date)",
+        "app/invoices/page.tsx (table view, filter by job)"
+      ]
+    },
+    "acceptance": [
+      "Creates invoice via API",
+      "Lists invoices with status badges"
+    ]
+  },
 
-    {"feature":"analytics_core","id":"ops_sql","desc":"SQL views: GMV, fill rate, TTFQ, days-to-cash, dispute rate; 7/28 day cuts."},
-    {"feature":"analytics_core","id":"ops_api","desc":"Route /api/admin/metrics returning above views JSON."},
+  {
+    "feature": "schema_disputes",
+    "entity": "disputes",
+    "spec": {
+      "columns": {
+        "id": "uuid primary key default gen_random_uuid()",
+        "job_id": "uuid not null",
+        "opened_by": "uuid not null",
+        "reason": "text not null",
+        "status": "text not null default 'open'",
+        "resolution": "text",
+        "created_at": "timestamp with time zone not null default now()",
+        "resolved_at": "timestamp with time zone"
+      },
+      "indexes": ["(job_id)", "(opened_by)", "(status)"],
+      "fkeys": {
+        "job_id": "references jobs(id) on delete cascade",
+        "opened_by": "references auth.users(id)"
+      }
+    },
+    "acceptance": [
+      "Idempotent SQL + indexes + FKs",
+      "Saved to migrations or sql/"
+    ]
+  },
 
-    {"feature":"admin_core","id":"admin_pages","desc":"/admin: jobs table, disputes queue, user search."},
-    {"feature":"admin_core","id":"role_policies","desc":"RLS: customers vs tradies vs admin; ensure no cross-tenant leaks."},
+  {
+    "feature": "api_disputes",
+    "entity": "disputes",
+    "spec": {
+      "routes": ["GET /api/disputes?job_id=", "POST /api/disputes", "PATCH /api/disputes/:id"],
+      "rules": "Only job participants can create/view; only admins can set status=resolved"
+    },
+    "acceptance": [
+      "Route Handlers at app/api/disputes/route.ts",
+      "RBAC/guards in handlers"
+    ]
+  },
 
-    {"feature":"ux","id":"job_post_page","desc":"Next.js page: 60-sec job wizard; creates job + escrow (zero balance)."},
-    {"feature":"ux","id":"job_tracker","desc":"Customer job tracker timeline (milestones, invoices, disputes)."},
-    {"feature":"ux","id":"quote_review","desc":"Customer compares quotes (price, ETA, trust score) and accepts."},
+  {
+    "feature": "page_disputes",
+    "entity": "disputes",
+    "spec": {
+      "pages": [
+        "app/disputes/new/page.tsx (open a dispute for a job)",
+        "app/disputes/page.tsx (list disputes with status)"
+      ]
+    },
+    "acceptance": [
+      "Open dispute form works",
+      "List loads with server data"
+    ]
+  },
 
-    {"feature":"quality","id":"tests_backend","desc":"Unit tests for state machines + escrow math."},
-    {"feature":"quality","id":"tests_e2e","desc":"Happy-path E2E: post job → receive quote → accept → create escrow milestone."},
+  {
+    "feature": "schema_messages",
+    "entity": "messages",
+    "spec": {
+      "columns": {
+        "id": "uuid primary key default gen_random_uuid()",
+        "job_id": "uuid not null",
+        "sender_id": "uuid not null",
+        "content": "text not null",
+        "sent_at": "timestamp with time zone not null default now()",
+        "read_at": "timestamp with time zone"
+      },
+      "indexes": ["(job_id)", "(sender_id)", "(sent_at desc)"],
+      "fkeys": {
+        "job_id": "references jobs(id) on delete cascade",
+        "sender_id": "references auth.users(id)"
+      }
+    },
+    "acceptance": [
+      "Idempotent SQL; performant indexes",
+      "Saved to migrations or sql/"
+    ]
+  },
 
-    {"feature":"ops","id":"rate_limits","desc":"API rate limits + abuse protections on create/accept endpoints."},
-    {"feature":"ops","id":"observability","desc":"Request logging + error boundaries + metric emit per route."}
-  ]
-}
+  {
+    "feature": "api_messages",
+    "entity": "messages",
+    "spec": {
+      "routes": ["GET /api/messages?job_id=", "POST /api/messages"],
+      "rules": "Only job participants may read/write"
+    },
+    "acceptance": [
+      "Route Handlers at app/api/messages/route.ts",
+      "Returns messages ordered by sent_at desc"
+    ]
+  },
+
+  {
+    "feature": "schema_notifications",
+    "entity": "notifications",
+    "spec": {
+      "columns": {
+        "id": "uuid primary key default gen_random_uuid()",
+        "user_id": "uuid not null",
+        "type": "text not null",
+        "payload": "jsonb not null default '{}'::jsonb",
+        "created_at": "timestamp with time zone not null default now()",
+        "read_at": "timestamp with time zone"
+      },
+      "indexes": ["(user_id)", "(created_at desc)"],
+      "fkeys": { "user_id": "references auth.users(id)" }
+    },
+    "acceptance": [
+      "Idempotent SQL",
+      "Saved to migrations or sql/"
+    ]
+  },
+
+  {
+    "feature": "api_notifications",
+    "entity": "notifications",
+    "spec": {
+      "routes": ["GET /api/notifications", "PATCH /api/notifications/:id/read"],
+      "rules": "Only the owner can read/update"
+    },
+    "acceptance": [
+      "Route Handlers at app/api/notifications/route.ts",
+      "Mark-as-read endpoint updates read_at"
+    ]
+  }
+]
