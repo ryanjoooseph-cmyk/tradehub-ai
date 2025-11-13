@@ -1,15 +1,16 @@
-import time
-import subprocess
+import time, subprocess
+
+SLEEP_SECONDS = 2  # keep aggressive loop
 
 while True:
-    # 1) make sure required tasks exist
+    # 1) Ensure one-off required features exist
     subprocess.run(["python", "feed_from_manifest.py"])
 
-    # 2) run one agent task
+    # 2) Keep the backlog topped up to your threshold
+    subprocess.run(["python", "auto_topup.py"])
+
+    # 3) Process one task
     subprocess.run(["python", "agent_dispatcher.py"])
 
-    # 3) (disabled for now) syncing to GitHub
-    # subprocess.run(["python", "sync_to_github.py"])
-
-    # 4) sleep
-    time.sleep(2)
+    # 4) Wait
+    time.sleep(SLEEP_SECONDS)
