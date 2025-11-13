@@ -1,132 +1,111 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-"""
-Loads task definitions from manifest.json with robust path and parsing:
-- Searches sensible locations (src first), or MANIFEST_PATH env.
-- Accepts:
-  - a single JSON object with {"features":[...]}
-  - a list of task objects
-  - multiple JSON objects concatenated (we'll decode them all)
-Returns a list[dict] of normalized task dicts: {"feature": str, "title": str, ...}
-"""
+# feed_from_manifest.py
+# Robust loader for job definitions ("features") from manifest.json or env.
+# Accepts:
+#   - A JSON object with {"features":[...]}, OR
+#   - A JSON list of feature dicts, OR
+#   - JSON Lines (one JSON object per line)
+#
+# Fallbacks:
+#   - MANIFEST_JSON (env with raw JSON/JSONL)
+#   - A built-in single "example" task
 
 from __future__ import annotations
-import json
-from json.decoder import JSONDecodeError, JSONDecoder
-import os
-from pathlib import Path
-from typing import Any, Dict, List, Tuple
+import json, os, io
+from typing import List, Dict, Any
 
+_DEF_TASKS: List[Dict[str, Any]] = [{
+    "feature": "example",
+    "instructions": "No manifest found; run the example flow only."
+}]
 
-def _first_existing(paths: List[Path]) -> Path | None:
-    for p in paths:
-        if p and p.exists():
-            return p
+def _read_text_from_any(path_candidates: list[str]) -> str | None:
+    for p in path_candidates:
+        try:
+            if p and os.path.exists(p):
+                with io.open(p, "r", encoding="utf-8") as f:
+                    return f.read()
+        except Exception:
+            pass
+    raw = os.environ.get("MANIFEST_JSON")
+    if raw and raw.strip():
+        return raw
     return None
 
-
-def _candidate_paths() -> List[Path]:
-    here = Path(__file__).resolve().parent            # /opt/render/project/src
-    root = here.parent                                 # /opt/render/project
-    env_p = os.getenv("MANIFEST_PATH")
-    return [
-        Path(env_p) if env_p else None,
-        here / "manifest.json",
-        here / "project" / "manifest.json",
-        root / "src" / "manifest.json",
-        root / "manifest.json",
-        Path.cwd() / "manifest.json",
-    ]
-
-
-def _read_text(path: Path) -> str:
-    with path.open("r", encoding="utf-8") as f:
-        return f.read()
-
-
-def _raw_decode_all(s: str) -> List[Any]:
-    """Decode multiple concatenated JSON objects if present."""
-    out: List[Any] = []
-    dec = JSONDecoder()
-    i = 0
-    n = len(s)
-    while i < n:
-        # skip whitespace
-        while i < n and s[i].isspace():
-            i += 1
-        if i >= n:
-            break
-        obj, j = dec.raw_decode(s, idx=i)
-        out.append(obj)
-        i = j
-    return out
-
-
-def _parse_manifest(text: str) -> List[Dict[str, Any]]:
-    """Return a list of task dicts from various manifest shapes."""
+def _parse_any_json_shape(src: str) -> List[Dict[str, Any]]:
+    # 1) Try single JSON (object or list)
     try:
-        data = json.loads(text)
-    except JSONDecodeError:
-        # Could be multiple concatenated JSON objects -> decode them all
-        objs = _raw_decode_all(text)
-        if not objs:
-            raise
-        # If multiple objects, each may be a feature or a task list/object
-        tasks: List[Dict[str, Any]] = []
-        for obj in objs:
-            tasks.extend(_normalize_any(obj))
-        return tasks
-    else:
-        return _normalize_any(data)
-
-
-def _normalize_any(data: Any) -> List[Dict[str, Any]]:
-    """
-    Accepts:
-      - {"features":[{"name":..., "tasks":[...]}]}
-      - [{"title":...}, ...]  (task list)
-      - {"title":...}         (single task)
-    Produces a flat list of normalized task dicts.
-    """
-    tasks: List[Dict[str, Any]] = []
-
-    if isinstance(data, dict):
-        if "features" in data and isinstance(data["features"], list):
-            for feat in data["features"]:
-                fname = (feat.get("name") or feat.get("feature") or "unknown") if isinstance(feat, dict) else "unknown"
-                inner = feat.get("tasks", []) if isinstance(feat, dict) else []
-                if isinstance(inner, list):
-                    for t in inner:
-                        if isinstance(t, dict):
-                            tasks.append(_normalize_task(t, feature=fname))
-                elif isinstance(inner, dict):
-                    tasks.append(_normalize_task(inner, feature=fname))
-        elif "title" in data or "task" in data:
-            tasks.append(_normalize_task(data))
+        parsed = json.loads(src)
+        if isinstance(parsed, dict):
+            # {"features":[...]} or single feature object
+            if "features" in parsed and isinstance(parsed["features"], list):
+                items = parsed["features"]
+            else:
+                items = [parsed]
+        elif isinstance(parsed, list):
+            items = parsed
         else:
-            # Allow {"tasks":[...]} shape too
-            maybe = data.get("tasks")
-            if isinstance(maybe, list):
-                for t in maybe:
-                    if isinstance(t, dict):
-                        tasks.append(_normalize_task(t))
-    elif isinstance(data, list):
-        for t in data:
-            if isinstance(t, dict):
-                tasks.append(_normalize_task(t))
+            items = []
+        return _normalize_items(items)
+    except json.JSONDecodeError:
+        pass
 
-    return tasks
+    # 2) Try JSON Lines (one object per line)
+    items: List[Dict[str, Any]] = []
+    for line in src.splitlines():
+        line = line.strip()
+        if not line or not (line.startswith("{") and line.endswith("}")):
+            continue
+        try:
+            obj = json.loads(line)
+            items.append(obj)
+        except Exception:
+            continue
+    if items:
+        return _normalize_items(items)
 
+    # 3) Give up -> default
+    return _DEF_TASKS[:]
 
-def _normalize_task(t: Dict[str, Any], *, feature: str | None = None) -> Dict[str, Any]:
-    return {
-        "feature": feature or t.get("feature") or "general",
-        "title": t.get("title") or t.get("task") or "untitled",
-        "description": t.get("description") or t.get("desc") or "",
-        "priority": t.get("priority", "normal"),
-        "meta": t.get("meta", {}),
-    }
+def _normalize_items(items: List[Any]) -> List[Dict[str, Any]]:
+    norm: List[Dict[str, Any]] = []
+    for it in items:
+        if isinstance(it, dict):
+            # Accept "feature" or "name" as the label key
+            if "feature" not in it and "name" in it:
+                it = {"feature": it["name"], **{k: v for k, v in it.items() if k != "name"}}
+            # Minimum contract
+            if "feature" in it and isinstance(it["feature"], str):
+                norm.append(it)
+            else:
+                # Skip non-conforming dicts
+                continue
+        else:
+            # Skip tuples/strings/etc.
+            continue
+    return norm if norm else _DEF_TASKS[:]
 
+def load_tasks() -> List[Dict[str, Any]]:
+    # Try a bunch of likely locations (Render runs from /opt/render/project)
+    cwd = os.getcwd()
+    here = os.path.dirname(os.path.abspath(__file__))
 
-def load_tasks() -> Tuple
+    candidates = [
+        os.environ.get("MANIFEST_PATH", "").strip() or None,
+        os.path.join(cwd, "manifest.json"),
+        os.path.join(cwd, "project", "manifest.json"),
+        os.path.join(cwd, "src", "manifest.json"),
+        os.path.join(os.path.dirname(cwd), "manifest.json"),
+        os.path.join(here, "..", "manifest.json"),
+        os.path.join(here, "manifest.json"),
+        "manifest.json",
+    ]
+    text = _read_text_from_any([c for c in candidates if c])
+    if text is None:
+        return _DEF_TASKS[:]
+    return _parse_any_json_shape(text)
+
+if __name__ == "__main__":
+    tasks = load_tasks()
+    print(f"[feed] loaded {len(tasks)} task definitions")
+    for t in tasks[:3]:
+        print(" -", t.get("feature"))
