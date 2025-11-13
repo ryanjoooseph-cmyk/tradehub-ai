@@ -1,66 +1,45 @@
 # project/src/reviewer_agent.py
-# Approve-by-default reviewer that returns a DICT (dispatcher expects .get()).
+# Returns a STRUCTURED dict so the dispatcher never sees a tuple.
 
-import os, re, json
-from typing import Any, Dict, List
+from typing import Any, Dict
 
-STRICT = (os.getenv("REVIEW_STRICT", "report").lower() == "enforce")
-
-# Very basic risk patterns; expand later.
-DANGEROUS: List[str] = [
-    r"\bdrop\s+table\b",
-    r"\balter\s+table\b.*\bdrop\s+column\b",
-    r"\bdelete\s+from\b(?!.*\bwhere\b)",     # DELETE without WHERE
-    r"rm\s+-rf\s+/",
-    r"OPENAI_API_KEY\s*=",
-    r"sk-[A-Za-z0-9]{10,}",                  # API keys
+RED_FLAG_SNIPPETS = [
+    "drop table", "delete from", "truncate table",
+    "os.system(", "subprocess.", "rm -rf /", "curl http",
+    "alter role", "grant all", "xp_cmdshell"
 ]
 
-def _collect_text(args, kwargs) -> str:
-    parts = []
-    for a in args:
-        if isinstance(a, str):
-            parts.append(a)
-        else:
-            try:
-                parts.append(json.dumps(a, default=str)[:8000])
-            except Exception:
-                pass
-    if kwargs:
-        try:
-            parts.append(json.dumps(kwargs, default=str)[:8000])
-        except Exception:
-            pass
-    return "\n".join(parts)
+def _to_text(x: Any) -> str:
+    try:
+        return x if isinstance(x, str) else str(x)
+    except Exception:
+        return ""
 
-def review(*args: Any, **kwargs: Any) -> Dict[str, Any]:
+def review(task: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Returns a dict:
+    Inspect a task and return a structured decision.
+
+    Must return:
       {
-        "approved": bool,
-        "reason": str,
-        "findings": [patterns],
-        "strict": bool
+        "decision": "approve" | "reject",
+        "approved": True|False,
+        "reason": "<short explanation>"
       }
-    Dispatcher calls decision.get("approved"), so dict is required.
     """
-    text = _collect_text(args, kwargs)
-    findings = [pat for pat in DANGEROUS
-                if re.search(pat, text, flags=re.IGNORECASE | re.MULTILINE)]
+    payload = task.get("payload") if isinstance(task, dict) else {}
+    preview = ""
+    if isinstance(payload, dict):
+        preview += _to_text(payload.get("expected_output", ""))
+        preview += "\n" + _to_text(payload.get("result_preview", ""))
 
-    if findings and STRICT:
-        reason = f"reject: matched dangerous patterns: {findings}"
-        decision = {"approved": False, "reason": reason, "findings": findings, "strict": True}
-        print(f"REVIEW DECISION: REJECT — {reason}")
-        return decision
+    text = (_to_text(task.get("result")) + "\n" + preview).lower()
 
-    if findings and not STRICT:
-        reason = f"approve(report): risky patterns found but STRICT=off: {findings}"
-        decision = {"approved": True, "reason": reason, "findings": findings, "strict": False}
-        print(f"REVIEW DECISION: APPROVE (report-only) — {reason}")
-        return decision
+    red = [flag for flag in RED_FLAG_SNIPPETS if flag in text]
+    if red:
+        reason = f"Found potentially dangerous patterns: {', '.join(red)}"
+        print("REVIEW DECISION: REJECT —", reason)
+        return {"decision": "reject", "approved": False, "reason": reason}
 
     reason = "approve: no dangerous patterns detected"
-    decision = {"approved": True, "reason": reason, "findings": [], "strict": STRICT}
-    print(f"REVIEW DECISION: APPROVE — {reason}")
-    return decision
+    print("REVIEW DECISION: APPROVE —", reason)
+    return {"decision": "approve", "approved": True, "reason": reason}
