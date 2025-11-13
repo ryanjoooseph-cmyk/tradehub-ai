@@ -1,100 +1,146 @@
-import os, json, psycopg2
+import os, json, psycopg2, uuid, datetime, traceback
+from typing import Optional, Dict, Any, List
 from crewai import Crew
-from crew_test import (
-    onboarding,
-    job_helper,
-    dispute_agent,
-    make_onboard_task,
-    make_job_task,
-    make_dispute_task,
-)
-from codegen_agents import (
-    frontend_agent,
-    backend_agent,
-    make_frontend_task,
-    make_backend_task,
-)
+from codegen_agents import make_frontend_task, make_backend_task
+from reviewer_agent import review
+from diff_applier import apply_and_diff, commit_and_push
 
 DB_DSN = os.environ["TRADEHUB_DB_DSN"]
 
-def get_conn():
+# Optional Git sync (safe: if missing, we skip commits)
+GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
+TARGET_REPO  = os.environ.get("TARGET_REPO")        # e.g. "yourname/tradehub-app"
+GIT_USER     = os.environ.get("GIT_COMMIT_NAME")    # e.g. "TradeHub AI"
+GIT_EMAIL    = os.environ.get("GIT_COMMIT_EMAIL")   # e.g. "bot@tradehub.ai"
+
+def conn():
     return psycopg2.connect(DB_DSN)
 
-def get_one_pending_task():
-    conn = get_conn()
-    conn.autocommit = False
-    try:
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT id, task_type, payload
-                FROM agent_tasks
-                WHERE status='pending'
-                ORDER BY created_at
-                FOR UPDATE SKIP LOCKED
-                LIMIT 1;
-            """)
-            row = cur.fetchone()
-            if not row:
-                conn.commit()
-                return None
-            task_id, task_type, payload = row
-            cur.execute("UPDATE agent_tasks SET status='running', updated_at=NOW() WHERE id=%s;", (task_id,))
-            conn.commit()
-            return {"id": task_id, "task_type": task_type, "payload": payload}
-    finally:
-        conn.close()
+def fetch_one_pending(cur) -> Optional[Dict[str,Any]]:
+    cur.execute("""
+        SELECT id, task_type, payload
+        FROM agent_tasks
+        WHERE status='pending'
+        ORDER BY created_at ASC
+        FOR UPDATE SKIP LOCKED
+        LIMIT 1;
+    """)
+    row = cur.fetchone()
+    if not row:
+        return None
+    return {"id": row[0], "task_type": row[1], "payload": row[2]}
 
-def save_result(task_id, result_json):
-    conn = get_conn()
-    try:
-        with conn.cursor() as cur:
-            cur.execute(
-                "UPDATE agent_tasks SET status='done', result=%s, updated_at=NOW() WHERE id=%s;",
-                (json.dumps(result_json), task_id)
-            )
-        conn.commit()
-    finally:
-        conn.close()
+def set_status(cur, task_id, status, err: Optional[str]=None, result: Optional[Any]=None):
+    if err is not None and len(err) > 2000:
+        err = err[:2000]
+    cur.execute("""
+        UPDATE agent_tasks
+        SET status=%s,
+            error=%s,
+            result=%s,
+            updated_at=now()
+        WHERE id=%s;
+    """, (status, err, json.dumps(result) if result is not None else None, task_id))
 
-def save_error(task_id, msg):
-    conn = get_conn()
+def kickoff_codegen(task_type: str, payload: dict) -> str:
+    """Run CrewAI with the right agent/task; return raw model text."""
+    if task_type == "codegen_frontend":
+        task = make_frontend_task(payload)
+    else:
+        task = make_backend_task(payload)
+    crew = Crew(agents=[task.agent], tasks=[task])
+    out = crew.kickoff()
+    # Crew returns an object that usually has .raw or str()
+    text = ""
     try:
-        with conn.cursor() as cur:
-            cur.execute(
-                "UPDATE agent_tasks SET status='error', error=%s, updated_at=NOW() WHERE id=%s;",
-                (msg, task_id)
+        text = out.raw if hasattr(out, "raw") else str(out)
+    except Exception:
+        text = str(out)
+    return text
+
+def parse_diff_json(raw: str) -> List[Dict[str,Any]]:
+    """Extract first JSON array/object from raw text and return as list of items."""
+    # find first '[' or '{'
+    s = raw.strip()
+    start = min([i for i in [s.find("["), s.find("{")] if i != -1] or [-1])
+    if start > 0:
+        s = s[start:]
+    data = json.loads(s)
+    if isinstance(data, dict):
+        data = [data]
+    # basic validation
+    for it in data:
+        if not all(k in it for k in ["file_path","operation"]):
+            raise ValueError("Invalid diff item; missing keys")
+    return data
+
+def main():
+    with conn() as c:
+        with c.cursor() as cur:
+            job = fetch_one_pending(cur)
+            if not job:
+                print("agent_dispatcher: no tasks")
+                return
+            task_id = job["id"]
+            cur.execute("UPDATE agent_tasks SET status='in_progress', updated_at=now() WHERE id=%s;", (task_id,))
+        c.commit()
+
+    # process outside the lock
+    try:
+        payload = job["payload"] if isinstance(job["payload"], dict) else json.loads(job["payload"])
+        raw = kickoff_codegen(job["task_type"], payload)
+        diff_items = parse_diff_json(raw)
+
+        # Generate a real diff text for review (clone if creds, else temp)
+        applied = apply_and_diff(
+            diff_items,
+            github_token=GITHUB_TOKEN,
+            target_repo=TARGET_REPO,
+            git_name=GIT_USER,
+            git_email=GIT_EMAIL
+        )
+        diff_text = applied.get("diff_text","")
+
+        # Reviewer gate
+        decision = review(json.dumps(diff_items, ensure_ascii=False), payload.get("notes",""))
+        if decision.get("decision") != "approve":
+            # Mark as error with reviewer notes
+            with conn() as c:
+                with c.cursor() as cur:
+                    set_status(cur, task_id, "error", f"REVIEW_REJECT: {decision.get('notes','')}", {"diff": diff_items})
+                c.commit()
+            print(f"agent_dispatcher: task {task_id} REJECTED by reviewer")
+            return
+
+        # Approved: if git creds exist, commit+push; else save result only
+        committed = False
+        if GITHUB_TOKEN and TARGET_REPO and GIT_USER and GIT_EMAIL:
+            commit_and_push(
+                diff_items,
+                github_token=GITHUB_TOKEN,
+                target_repo=TARGET_REPO,
+                git_name=GIT_USER,
+                git_email=GIT_EMAIL,
+                commit_msg=f"AI: {job['task_type']} {payload.get('feature','')}"
             )
-        conn.commit()
-    finally:
-        conn.close()
+            committed = True
+
+        with conn() as c:
+            with c.cursor() as cur:
+                set_status(cur, task_id, "done", None, {
+                    "diff_items": diff_items,
+                    "committed": committed
+                })
+            c.commit()
+        print(f"agent_dispatcher: task {task_id} DONE (committed={committed})")
+
+    except Exception as e:
+        err = f"{type(e).__name__}: {e}\n{traceback.format_exc()}"
+        with conn() as c:
+            with c.cursor() as cur:
+                set_status(cur, job["id"], "error", err, None)
+            c.commit()
+        print(f"agent_dispatcher: task {job['id']} ERROR: {e}")
 
 if __name__ == "__main__":
-    task = get_one_pending_task()
-    if not task:
-        print("no tasks")
-        raise SystemExit(0)
-
-    ttype = task["task_type"]
-    payload = task["payload"] or {}
-
-    try:
-        if ttype == "onboard":
-            crew = Crew(agents=[onboarding], tasks=[make_onboard_task(payload)])
-        elif ttype == "job":
-            crew = Crew(agents=[job_helper], tasks=[make_job_task(payload)])
-        elif ttype == "dispute":
-            crew = Crew(agents=[dispute_agent], tasks=[make_dispute_task(payload)])
-        elif ttype == "codegen_frontend":
-            crew = Crew(agents=[frontend_agent], tasks=[make_frontend_task(payload)])
-        elif ttype == "codegen_backend":
-            crew = Crew(agents=[backend_agent], tasks=[make_backend_task(payload)])
-        else:
-            raise ValueError(f"unknown task_type: {ttype}")
-
-        results = crew.kickoff()
-        out = [str(r) for r in results]
-        save_result(task["id"], out)
-        print("done", task["id"])
-    except Exception as e:
-        save_error(task["id"], str(e))
-        raise
+    main()
