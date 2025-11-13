@@ -1,44 +1,64 @@
-[
-  {
-    "task_type": "codegen_backend",
-    "feature": "jobs_core",
-    "route": "/api/jobs",
-    "notes": "create jobs table if not exists, list jobs by customer_id and tradie_id, create job"
+{
+  "version": "2025-11-13",
+  "global_constraints": {
+    "stack": "Next.js 14 + TypeScript + Supabase (Postgres, RLS) + Edge functions",
+    "style": "minimal, typed, testable; idempotent SQL; no breaking migrations",
+    "output": "STRICT_JSON_DIFF {\"file_path\",\"operation\",\"content\"}"
   },
-  {
-    "task_type": "codegen_frontend",
-    "feature": "jobs_dashboard",
-    "route": "/dashboard/jobs",
-    "notes": "Next.js page listing jobs from /api/jobs"
-  },
-  {
-    "task_type": "codegen_backend",
-    "feature": "tradies_core",
-    "route": "/api/tradies",
-    "notes": "create tradies table with filters for trade_type and service_area"
-  },
-  {
-    "task_type": "codegen_backend",
-    "feature": "disputes_core",
-    "route": "/api/disputes",
-    "notes": "open dispute, list disputes, update dispute status"
-  },
-  {
-    "task_type": "codegen_frontend",
-    "feature": "admin_disputes",
-    "route": "/admin/disputes",
-    "notes": "admin disputes table pulling from /api/disputes"
-  },
-  {
-    "task_type": "codegen_backend",
-    "feature": "ai_job_scoper_backend",
-    "route": "/api/ai/job-scope",
-    "notes": "accept text/image refs and return structured job scope json"
-  },
-  {
-    "task_type": "codegen_frontend",
-    "feature": "ai_job_scoper_frontend",
-    "route": "/ai/job-scope",
-    "notes": "form that posts to /api/ai/job-scope and renders structured result"
-  }
-]
+  "epics": [
+    {"key":"jobs_core","goal":"Jobs CRUD + status machine + audit log"},
+    {"key":"quotes_core","goal":"Quotes CRUD + acceptance + conversion to job"},
+    {"key":"escrow_core","goal":"Milestone escrow modeling + API (no payouts yet)"},
+    {"key":"disputes_core","goal":"Disputes capture + evidence + status flow"},
+    {"key":"matching_core","goal":"Matchmaker: radius/skills/eta/price rank"},
+    {"key":"trust_graph","goal":"Event → score model + API"},
+    {"key":"materials_core","goal":"Materials lines + PO draft"},
+    {"key":"notifications","goal":"Email/SMS/Push templating + events"},
+    {"key":"analytics_core","goal":"Ops dashboard SQL + API"},
+    {"key":"admin_core","goal":"Admin screens for moderation/escalation"}
+  ],
+  "tasks": [
+    {"feature":"jobs_core","id":"jobs_api_routes","desc":"Create Next.js route /api/jobs (GET list, POST create) with validation."},
+    {"feature":"jobs_core","id":"jobs_table","desc":"SQL create table jobs (id, title, description, location, budget, customer_id, tradie_id, status, created_at)."},
+    {"feature":"jobs_core","id":"jobs_status_machine","desc":"Add enum + server action to move statuses (draft→posted→quoted→in_progress→completed→closed, cancelled)."},
+    {"feature":"jobs_core","id":"jobs_audit","desc":"Audit table job_events; write on each state change."},
+
+    {"feature":"quotes_core","id":"quotes_table","desc":"SQL create table quotes (id, job_id FK, tradie_id, amount, notes, expires_at, status)."},
+    {"feature":"quotes_core","id":"quotes_api","desc":"Routes /api/quotes with POST (create), PATCH (accept/decline)."},
+    {"feature":"quotes_core","id":"convert_quote_to_job","desc":"Server action: accept quote → assign tradie, set job status=in_progress."},
+
+    {"feature":"escrow_core","id":"escrow_tables","desc":"SQL: escrows(id, job_id, state, currency, held_amount, released_amount); milestones(id, escrow_id, title, amount, state)."},
+    {"feature":"escrow_core","id":"escrow_api","desc":"Routes /api/escrows (create from accepted quote), /api/milestones (create/release/request)."},
+
+    {"feature":"disputes_core","id":"disputes_table","desc":"SQL disputes(id, job_id, milestone_id, opened_by, reason, state) + evidence table with file refs."},
+    {"feature":"disputes_core","id":"disputes_api","desc":"Routes to open dispute, attach evidence, resolve (holdback/refund/release)."},
+    
+    {"feature":"matching_core","id":"tradie_profile_schema","desc":"SQL: tradie_profiles(skills[], radius_km, base_location, license_no, availability)."},
+    {"feature":"matching_core","id":"matcher_service","desc":"Edge function rank_tradies(job) → list by distance/skills/eta/price history."},
+
+    {"feature":"trust_graph","id":"trust_events","desc":"SQL event_stream (actor, subject, verb, score_delta) + score table."},
+    {"feature":"trust_graph","id":"trust_api","desc":"Route to fetch trust score for user/tradie + reasons."},
+
+    {"feature":"materials_core","id":"materials_tables","desc":"SQL materials_lines(job_id, sku, qty, unit_price, supplier) + purchase_orders."},
+    {"feature":"materials_core","id":"materials_api","desc":"Routes to upsert materials lines + draft PO export (CSV)."},
+    
+    {"feature":"notifications","id":"templates","desc":"Tables + simple renderer for email/SMS (job posted, quote received, milestone ready)."},
+    {"feature":"notifications","id":"hooks","desc":"Emit notifications from key state changes (jobs, quotes, milestones, disputes)."},
+
+    {"feature":"analytics_core","id":"ops_sql","desc":"SQL views: GMV, fill rate, TTFQ, days-to-cash, dispute rate; 7/28 day cuts."},
+    {"feature":"analytics_core","id":"ops_api","desc":"Route /api/admin/metrics returning above views JSON."},
+
+    {"feature":"admin_core","id":"admin_pages","desc":"/admin: jobs table, disputes queue, user search."},
+    {"feature":"admin_core","id":"role_policies","desc":"RLS: customers vs tradies vs admin; ensure no cross-tenant leaks."},
+
+    {"feature":"ux","id":"job_post_page","desc":"Next.js page: 60-sec job wizard; creates job + escrow (zero balance)."},
+    {"feature":"ux","id":"job_tracker","desc":"Customer job tracker timeline (milestones, invoices, disputes)."},
+    {"feature":"ux","id":"quote_review","desc":"Customer compares quotes (price, ETA, trust score) and accepts."},
+
+    {"feature":"quality","id":"tests_backend","desc":"Unit tests for state machines + escrow math."},
+    {"feature":"quality","id":"tests_e2e","desc":"Happy-path E2E: post job → receive quote → accept → create escrow milestone."},
+
+    {"feature":"ops","id":"rate_limits","desc":"API rate limits + abuse protections on create/accept endpoints."},
+    {"feature":"ops","id":"observability","desc":"Request logging + error boundaries + metric emit per route."}
+  ]
+}
