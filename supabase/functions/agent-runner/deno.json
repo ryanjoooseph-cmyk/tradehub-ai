@@ -1,0 +1,14 @@
+{
+  "deploy": {
+    "permissions": {
+      "env": [
+        "SUPABASE_URL",
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "OPENAI_API_KEY",
+        "TASKS_TABLE"
+      ],
+      "net": ["api.openai.com"]
+    },
+    "verify-jwt": false
+  }
+}
