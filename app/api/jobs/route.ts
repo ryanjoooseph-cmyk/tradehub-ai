@@ -1,51 +1,50 @@
 // app/api/jobs/route.ts
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseAdmin';
+import { createClient } from '@supabase/supabase-js';
 
-export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+const SUPABASE_URL = process.env.SUPABASE_URL!;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!; // server-only
+
+const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+type JobRow = { id: string; title: string; created_at: string };
+
 export async function GET() {
-  const { data, error } = await supabase
+  const { data, error } = await sb
     .from('jobs')
-    .select('*')
+    .select('id,title,created_at')
     .order('created_at', { ascending: false })
     .limit(50);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('jobs GET error:', error);
+    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
-  return NextResponse.json({ data: data ?? [] }, { status: 200 });
+  return NextResponse.json((data ?? []) as JobRow[]);
 }
 
 export async function POST(req: Request) {
-  let payload: any = {};
+  let body: unknown;
   try {
-    payload = await req.json();
+    body = await req.json();
   } catch {
-    /* ignore */
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const title =
-    typeof payload?.title === 'string' && payload.title.trim().length > 0
-      ? payload.title.trim()
-      : null;
+  const title = (body as any)?.title?.toString().trim();
+  if (!title) return NextResponse.json({ error: 'Missing "title"' }, { status: 400 });
 
-  if (!title) {
-    return NextResponse.json({ error: 'title required' }, { status: 400 });
-  }
-
-  const insertRow = { title, payload: payload?.payload ?? null };
-
-  const { data, error } = await supabase
+  const { data, error } = await sb
     .from('jobs')
-    .insert(insertRow)
-    .select('*')
+    .insert([{ title }])
+    .select('id,title,created_at')
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('jobs POST error:', error);
+    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
-
-  return NextResponse.json({ data }, { status: 201 });
+  return NextResponse.json(data as JobRow, { status: 201 });
 }
