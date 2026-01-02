@@ -1,50 +1,30 @@
 // components/AppShell.tsx
-'use client';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import React from 'react';
-
-const tabs = [
-  { href: '/', label: 'Dashboard' },
-  { href: '/jobs', label: 'Jobs' },
-  { href: '/market', label: 'Market' },
-  { href: '/messages', label: 'Messages' },
-  { href: '/profile', label: 'Profile' },
-];
+import Link from "next/link";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', minHeight: '100vh' }}>
-      <aside style={{ borderRight: '1px solid #e5e7eb', padding: 16 }}>
-        <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 16 }}>TradeHub</div>
-        <nav>
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-            {tabs.map(t => {
-              const active = pathname === t.href || (t.href !== '/' && pathname.startsWith(t.href));
-              return (
-                <li key={t.href} style={{ marginBottom: 8 }}>
-                  <Link
-                    href={t.href}
-                    style={{
-                      display: 'block',
-                      padding: '8px 10px',
-                      borderRadius: 8,
-                      textDecoration: 'none',
-                      background: active ? '#eef2ff' : 'transparent',
-                      color: active ? '#3730a3' : '#111827',
-                      fontWeight: active ? 700 : 500,
-                    }}
-                  >
-                    {t.label}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
-      </aside>
-      <main style={{ padding: 24 }}>{children}</main>
+    <div style={{ minHeight: "100vh", background: "#0a0b0d", color: "#e6e6e6" }}>
+      <header style={{
+        borderBottom: "1px solid #1b1f24",
+        position: "sticky", top: 0, zIndex: 10, background: "#0a0b0d"
+      }}>
+        <div style={{
+          maxWidth: 980, margin: "0 auto", display: "flex",
+          alignItems: "center", justifyContent: "space-between", padding: "14px 16px"
+        }}>
+          <Link href="/" style={{ fontWeight: 700, fontSize: 18, letterSpacing: .4 }}>TradeHub</Link>
+          <nav style={{ display: "flex", gap: 16, fontSize: 14 }}>
+            <Link href="/market">Market</Link>
+            <Link href="/messages">Messages</Link>
+            <Link href="/jobs">Jobs</Link>
+            <Link href="/profile">Profile</Link>
+          </nav>
+        </div>
+      </header>
+      <main style={{ maxWidth: 980, margin: "0 auto", padding: 16 }}>{children}</main>
+      <footer style={{ borderTop: "1px solid #1b1f24", marginTop: 32, padding: 16, fontSize: 12, opacity: .7 }}>
+        © {new Date().getFullYear()} TradeHub
+      </footer>
     </div>
   );
 }
