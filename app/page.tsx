@@ -1,10 +1,11 @@
+// app/page.tsx
 import Link from "next/link";
 
 export default function Home() {
   return (
     <div>
-      <h1>Welcome to TradeHub</h1>
-      <p>Start with a module:</p>
+      <h2>Welcome</h2>
+      <p>This is the starter UI scaffold.</p>
       <ul>
         <li><Link href="/jobs">Jobs</Link></li>
         <li><Link href="/market">Market</Link></li>
