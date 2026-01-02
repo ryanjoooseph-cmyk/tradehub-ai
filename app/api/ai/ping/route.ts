@@ -1,34 +1,28 @@
-// app/api/ai-test/route.ts
-import { NextResponse } from 'next/server';
+// app/api/ai/ping/route.ts
+import OpenAI from "openai";
+
+const client = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 export async function GET() {
-  try {
-    const key = process.env.OPENAI_API_KEY;
-    if (!key) {
-      return NextResponse.json(
-        { ok: false, error: 'OPENAI_API_KEY missing' },
-        { status: 500 }
-      );
-    }
-
-    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${key}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: 'ping' }],
-        max_tokens: 1,
-      }),
-    });
-
-    return NextResponse.json({ ok: resp.ok, status: resp.status });
-  } catch (e: any) {
-    return NextResponse.json(
-      { ok: false, error: e?.message ?? 'error' },
+  if (!process.env.OPENAI_API_KEY) {
+    return Response.json(
+      { ok: false, error: "Missing OPENAI_API_KEY" },
       { status: 500 }
     );
+  }
+
+  try {
+    // Minimal, near-free usage just to verify billing/usage pipeline
+    const res = await client.responses.create({
+      model: "gpt-4o-mini",
+      input: "Reply with the word: pong",
+      max_output_tokens: 5,
+    });
+    return Response.json({ ok: true, text: res.output_text ?? "" });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return Response.json({ ok: false, error: message }, { status: 500 });
   }
 }
