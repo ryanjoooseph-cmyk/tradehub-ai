@@ -1,17 +1,21 @@
-"use client";
-
 import Link from "next/link";
-import type { ReactNode } from "react";
+import React from "react";
 
-export default function AppShell({ children }: { children: ReactNode }) {
+export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ maxWidth: 960, margin: "40px auto", padding: 16 }}>
+    <div style={{ maxWidth: 980, margin: "40px auto", padding: 16 }}>
       <header style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 24 }}>
-        <Link href="/">Home</Link>
-        <Link href="/jobs">Jobs</Link>
-        <Link href="/market">Market</Link>
+        <strong>TradeHub</strong>
+        <nav style={{ display: "flex", gap: 12 }}>
+          <Link href="/">Home</Link>
+          <Link href="/jobs">Jobs</Link>
+          <Link href="/market">Market</Link>
+        </nav>
       </header>
-      {children}
+      <main>{children}</main>
+      <footer style={{ marginTop: 48, fontSize: 12, opacity: 0.7 }}>
+        © {new Date().getFullYear()} TradeHub
+      </footer>
     </div>
   );
 }
