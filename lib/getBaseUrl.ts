@@ -1,11 +1,6 @@
-// lib/getBaseUrl.ts
-export function getBaseUrl(): string {
-  // Browser: relative paths are fine
-  if (typeof window !== "undefined") return "";
-  // Server: use an absolute base
-  return (
-    process.env.NEXT_PUBLIC_BASE_URL ||   // optional explicit
-    process.env.RENDER_EXTERNAL_URL ||    // Render sets this automatically
-    "http://localhost:3000"               // dev fallback
-  );
+export function getBaseUrl() {
+  const ext = process.env.RENDER_EXTERNAL_URL || process.env.NEXT_PUBLIC_BASE_URL;
+  if (ext) return ext.startsWith('http') ? ext : `https://${ext}`;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return 'http://localhost:3000';
 }
