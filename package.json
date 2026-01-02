@@ -1,23 +1,17 @@
 {
   "name": "tradehub-app",
+  "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start -p $PORT",
-    "lint": "next lint"
+    "start": "next start"
   },
+  "engines": { "node": ">=18.17" },
   "dependencies": {
-    "@supabase/supabase-js": "^2.45.0",
     "next": "14.2.10",
     "react": "18.3.1",
-    "react-dom": "18.3.1"
-  },
-  "devDependencies": {
-    "@types/node": "^20.11.30",
-    "@types/react": "^18.2.48",
-    "eslint": "^8.57.0",
-    "eslint-config-next": "14.2.10",
-    "typescript": "^5.6.3"
+    "react-dom": "18.3.1",
+    "openai": "^4.59.0"
   }
 }
