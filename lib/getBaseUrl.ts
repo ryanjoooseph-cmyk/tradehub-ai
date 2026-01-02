@@ -1,16 +1,23 @@
 // lib/getBaseUrl.ts
-export function getBaseUrl(): string {
-  const ext =
+export function getBaseUrl(): URL {
+  // Prefer a fully-qualified external URL if Render provided it
+  const external =
     process.env.RENDER_EXTERNAL_URL ||
-    process.env.VERCEL_URL ||
-    process.env.NEXT_PUBLIC_APP_URL ||
-    "";
+    process.env.NEXT_PUBLIC_BASE_URL ||
+    process.env.VERCEL_URL;
 
-  if (ext) {
-    const url = ext.startsWith("http") ? ext : `https://${ext}`;
-    const u = new URL(url);
-    return u.origin; // always "https://host"
+  if (external) {
+    // Accept either "example.com" or "https://example.com"
+    const url = external.startsWith("http") ? external : `https://${external}`;
+    return new URL(url);
   }
-  // local dev
-  return "http://localhost:3000";
+
+  // Fallback for local dev
+  return new URL("http://localhost:3000");
+}
+
+export function api(path: string): string {
+  const base = getBaseUrl();
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  return new URL(normalized, base).toString();
 }
