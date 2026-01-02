@@ -1,13 +1,18 @@
 // lib/getBaseUrl.ts
-export function getBaseUrl() {
-  // Prefer Render’s externally reachable URL (it’s auto-set on Render),
-  // otherwise fall back to a custom NEXT_PUBLIC_BASE_URL or local dev.
-  const ext =
-    process.env.RENDER_EXTERNAL_URL ||
-    process.env.NEXT_PUBLIC_BASE_URL ||
-    '';
+export default function getBaseUrl(): string {
+  // Prefer Render’s external URL if present
+  const ext = process.env.RENDER_EXTERNAL_URL;
+  if (ext && ext.trim().length > 0) {
+    // Normalize: ensure scheme
+    return ext.startsWith('http') ? ext : `https://${ext}`;
+  }
 
-  if (ext && ext.startsWith('http')) return ext;
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  // Vercel fallback (harmless on Render)
+  const vercel = process.env.VERCEL_URL;
+  if (vercel && vercel.trim().length > 0) {
+    return vercel.startsWith('http') ? vercel : `https://${vercel}`;
+  }
+
+  // Local dev
   return 'http://localhost:3000';
 }
