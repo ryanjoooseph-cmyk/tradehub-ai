@@ -1,18 +1,28 @@
 // lib/getBaseUrl.ts
-export default function getBaseUrl(): string {
-  // Prefer Render’s external URL if present
-  const ext = process.env.RENDER_EXTERNAL_URL;
-  if (ext && ext.trim().length > 0) {
-    // Normalize: ensure scheme
-    return ext.startsWith('http') ? ext : `https://${ext}`;
-  }
+/**
+ * Returns a safe absolute origin for server-side fetches.
+ * Accepts any of: NEXT_PUBLIC_BASE_URL, RENDER_EXTERNAL_URL, or VERCEL_URL.
+ * Guarantees protocol + double slash (https://...).
+ */
+export function getBaseUrl(): string {
+  const cand = [
+    process.env.NEXT_PUBLIC_BASE_URL,                                        // e.g. https://tradehub-app.onrender.com
+    process.env.RENDER_EXTERNAL_URL,                                         // e.g. https://tradehub-app.onrender.com  (Render usually sets this)
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined // Vercel-style
+  ].filter(Boolean) as string[];
 
-  // Vercel fallback (harmless on Render)
-  const vercel = process.env.VERCEL_URL;
-  if (vercel && vercel.trim().length > 0) {
-    return vercel.startsWith('http') ? vercel : `https://${vercel}`;
+  for (const raw of cand) {
+    try {
+      // If someone saved just the host, add https://
+      const str = raw.startsWith('http') ? raw : `https://${raw}`;
+      const u = new URL(str);
+      // Normalize accidental "https:/host" to "https://host"
+      const fixed = `${u.protocol}//${u.host}`;
+      return fixed;
+    } catch {
+      /* try next candidate */
+    }
   }
-
-  // Local dev
+  // Local dev fallback
   return 'http://localhost:3000';
 }
