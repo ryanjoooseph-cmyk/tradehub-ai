@@ -1,30 +1,23 @@
-// app/market/page.tsx
-import React from 'react';
+// app/page.tsx
+import getBaseUrl from "../lib/getBaseUrl";
 
-export const dynamic = 'force-dynamic';
+async function getJobs() {
+  const base = getBaseUrl();
+  const res = await fetch(`${base}/api/jobs`, { cache: "no-store" });
+  if (!res.ok) return [];
+  return res.json() as Promise<{ id: number; title: string; created_at: string }[]>;
+}
 
-const mock = [
-  { id: 'p1', title: 'Licensed Electrician', blurb: 'Switchboards • EV chargers • Rewiring', region: 'Melbourne' },
-  { id: 'p2', title: 'Plumber', blurb: 'Hot water • Gas fitting • Blocked drains', region: 'Geelong' },
-  { id: 'p3', title: 'Carpenter', blurb: 'Decks • Framing • Doors & windows', region: 'Mornington' },
-];
-
-export default async function MarketPage() {
+export default async function Dashboard() {
+  const jobs = await getJobs();
   return (
-    <div style={{ maxWidth: 960 }}>
-      <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 12 }}>Market</h1>
-      <p style={{ color: '#6b7280', marginBottom: 24 }}>
-        Browse trades and services. (Hook to real data next.)
-      </p>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px,1fr))', gap: 16 }}>
-        {mock.map(m => (
-          <div key={m.id} style={{ border: '1px solid #e5e7eb', padding: 16, borderRadius: 12 }}>
-            <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 6 }}>{m.title}</div>
-            <div style={{ color: '#6b7280', marginBottom: 8 }}>{m.blurb}</div>
-            <div style={{ fontSize: 12, color: '#6b7280' }}>{m.region}</div>
-            <a href="/messages" style={{ display: 'inline-block', marginTop: 12, fontWeight: 600 }}>Message</a>
-          </div>
-        ))}
+    <div>
+      <h1 style={{ fontSize: 24, margin: "8px 0 16px" }}>Dashboard</h1>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
+        <div style={{ border: "1px solid #1b1f24", borderRadius: 8, padding: 12 }}>
+          <div style={{ fontSize: 12, opacity: .7 }}>Open Jobs</div>
+          <div style={{ fontSize: 28, fontWeight: 700 }}>{jobs.length}</div>
+        </div>
       </div>
     </div>
   );
