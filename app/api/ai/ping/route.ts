@@ -1,17 +1,34 @@
 // app/api/ai-test/route.ts
-import OpenAI from 'openai';
+import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    // Tiny call so you can confirm usage increments
-    await client.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [{ role: 'user', content: 'ping' }],
-      max_tokens: 5,
+    const key = process.env.OPENAI_API_KEY;
+    if (!key) {
+      return NextResponse.json(
+        { ok: false, error: 'OPENAI_API_KEY missing' },
+        { status: 500 }
+      );
+    }
+
+    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${key}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: 'ping' }],
+        max_tokens: 1,
+      }),
     });
-    return Response.json({ ok: true });
-  } catch (err: any) {
-    return Response.json({ ok: false, error: String(err?.message ?? err) }, { status: 500 });
+
+    return NextResponse.json({ ok: resp.ok, status: resp.status });
+  } catch (e: any) {
+    return NextResponse.json(
+      { ok: false, error: e?.message ?? 'error' },
+      { status: 500 }
+    );
   }
 }
