@@ -1,12 +1,7 @@
-import type { ReactNode } from "react";
+import React from "react";
 import AppShell from "a/components/AppShell";
 
-export const metadata = {
-  title: "TradeHub",
-  description: "TradeHub platform"
-};
-
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>
