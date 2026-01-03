@@ -1,5 +1,8 @@
 // app/api/jobs/route.ts
+// Minimal, safe route. Swap to Supabase later if you want.
+// Keeps runtime happy even with no DB env set.
+
 export async function GET() {
-  const rows: Array<{ id: string; title: string; created_at: string }> = [];
-  return Response.json(rows);
+  // Return an empty list by default
+  return Response.json([]);
 }
