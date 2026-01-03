@@ -1,20 +1,13 @@
 export function getBaseUrl(): string {
-  const fromEnv =
-    process.env.RENDER_EXTERNAL_URL ||
+  if (typeof window !== "undefined") return "";
+  const url =
     process.env.NEXT_PUBLIC_SITE_URL ||
-    process.env.VERCEL_URL;
-
-  const origin = fromEnv
-    ? (fromEnv.startsWith("http") ? fromEnv : `https://${fromEnv}`)
-    : "http://localhost:3000";
-
-  return origin.replace(/\/+$/, "");
+    process.env.RENDER_EXTERNAL_URL ||
+    process.env.VERCEL_URL ||
+    process.env.URL;
+  return url ? (url.startsWith("http") ? url : `https://${url}`) : "http://localhost:3000";
 }
 
-/** Helper for server-side fetch paths */
-export function api(path: string): string {
-  const p = path.startsWith("/") ? path : `/${path}`;
-  return `${getBaseUrl()}${p}`;
-}
-
-export default getBaseUrl; // provide both default + named to avoid import mismatches
+// keep both to satisfy any old imports your pages had
+export const api = { baseUrl: getBaseUrl() };
+export default getBaseUrl;
