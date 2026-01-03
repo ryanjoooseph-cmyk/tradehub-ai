@@ -1,27 +1,23 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { getBrowserClient } from "@/lib/supabase";
+'use client';
+import { useEffect, useState } from 'react';
+import { getBrowserClient } from '@/lib/supabase';
 
 type Profile = { id: string; full_name: string | null; bio: string | null };
 
 export default function ProfilePage() {
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profiles, setProfiles] = useState<Profile[] | null>(null);
 
   useEffect(() => {
-    const supabase = getBrowserClient();
-    supabase
-      .from("profiles")
-      .select("id, full_name, bio")
-      .single()
-      .then(({ data }) => setProfile(data as any))
-      .catch(() => setProfile(null));
+    const sb = getBrowserClient();
+    sb.from('profiles').select('id, full_name, bio').then(({ data }) => {
+      setProfiles((data as any) ?? []);
+    });
   }, []);
 
   return (
-    <>
+    <main>
       <h1>Profile</h1>
-      <pre>{JSON.stringify(profile, null, 2)}</pre>
-    </>
+      <pre>{JSON.stringify(profiles, null, 2)}</pre>
+    </main>
   );
 }
