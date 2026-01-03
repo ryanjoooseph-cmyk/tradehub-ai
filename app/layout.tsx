@@ -1,14 +1,12 @@
 import './globals.css';
-import type { ReactNode } from 'react';
+import type { Metadata } from 'next';
 
-export const metadata = { title: 'TradeHub' };
+export const metadata: Metadata = { title: 'TradeHub', description: 'TradeHub' };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>
-        <main>{children}</main>
-      </body>
+      <body><main>{children}</main></body>
     </html>
   );
 }
