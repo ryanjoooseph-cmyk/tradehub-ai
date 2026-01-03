@@ -1,24 +1,15 @@
-// lib/getBaseUrl.ts
+import { headers } from 'next/headers';
 
-/** Returns a valid absolute origin for server/client */
 export function getBaseUrl(): string {
-  const env =
-    process.env.RENDER_EXTERNAL_URL ||
-    process.env.NEXT_PUBLIC_APP_URL ||
-    "";
+  const h = headers();
+  const proto = h.get('x-forwarded-proto') ?? 'https';
+  const host  = h.get('x-forwarded-host') ?? h.get('host');
 
-  const origin = env.replace(/\/+$/, "");
-  if (origin) return origin; // production/staging
-
-  // dev fallback
-  return "http://localhost:3000";
+  if (host) return `${proto}://${host}`;
+  if (process.env.RENDER_EXTERNAL_URL) return `https://${process.env.RENDER_EXTERNAL_URL}`;
+  return 'http://localhost:3000';
 }
 
-/** Builds an absolute URL for API calls, e.g. api('/api/jobs') */
-export function api(path: string): string {
-  const p = path.startsWith("/") ? path : `/${path}`;
-  return `${getBaseUrl()}${p}`;
-}
-
-// keep default export for any legacy default imports
+// compatibility exports for existing imports
 export default getBaseUrl;
+export const api = getBaseUrl;
