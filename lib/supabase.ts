@@ -1,20 +1,26 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+// lib/supabase.ts
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+let _client: SupabaseClient | null = null;
 
 /**
  * Browser-safe Supabase client.
- * Throws with a clear message if envs are missing on Render.
+ * Throws with a clear message if required env vars are missing.
+ * Exports BOTH a named and default export so either import style works.
  */
 export function getBrowserClient(): SupabaseClient {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
   if (!url || !anon) {
     throw new Error(
-      "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY"
+      'Supabase env missing: set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY on Render.'
     );
   }
-  return createClient(url, anon);
+
+  if (!_client) _client = createClient(url, anon);
+  return _client;
 }
 
-// Also export as default so either import style works.
+// allow: import getBrowserClient from '@/lib/supabase'
 export default getBrowserClient;
