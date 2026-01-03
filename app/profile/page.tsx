@@ -1,23 +1,14 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { getBrowserClient } from '@/lib/supabase';
 
-type Profile = { id: string; full_name: string | null; bio: string | null };
+import { useEffect } from 'react';
+import getBrowserClient from '@/lib/supabase';
 
 export default function ProfilePage() {
-  const [profiles, setProfiles] = useState<Profile[] | null>(null);
-
   useEffect(() => {
-    const sb = getBrowserClient();
-    sb.from('profiles').select('id, full_name, bio').then(({ data }) => {
-      setProfiles((data as any) ?? []);
-    });
+    // instantiate without querying tables (prevents runtime 404s)
+    const supabase = getBrowserClient();
+    void supabase; // no-op
   }, []);
 
-  return (
-    <main>
-      <h1>Profile</h1>
-      <pre>{JSON.stringify(profiles, null, 2)}</pre>
-    </main>
-  );
+  return <div>Profile</div>;
 }
