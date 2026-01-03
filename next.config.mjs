@@ -1,12 +1,17 @@
+import path from "path";
+
 /** @type {import('next').NextConfig} */
-const nextConfig = {
-  webpack: (config) => {
-    config.resolve.alias = {
-      ...(config.resolve.alias || {}),
-      a: process.cwd() // enables imports like: a/lib/getBaseUrl
+const config = {
+  reactStrictMode: true,
+  experimental: { appDir: true },
+  webpack: (cfg) => {
+    // Support legacy imports like: import X from 'a/...'
+    cfg.resolve.alias = {
+      ...(cfg.resolve.alias || {}),
+      a: path.resolve(__dirname)
     };
-    return config;
+    return cfg;
   }
 };
 
-export default nextConfig;
+export default config;
