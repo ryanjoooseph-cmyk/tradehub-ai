@@ -1,0 +1,24 @@
+{
+  "onboard": {
+    "name": "Perth Plumbing Co",
+    "abn": "12345678901",
+    "trade_type": "Plumber",
+    "service_area": "Perth, WA",
+    "phone": "0400000000",
+    "email": "hello@perthplumbing.com"
+  },
+  "job_helper": {
+    "job_title": "Bathroom tiling repair",
+    "description": "Tiles laid but not grouted properly, water getting through.",
+    "location": "Perth, WA",
+    "budget": "$400 - $700",
+    "photos": ["https://example.com/bathroom-before.jpg"]
+  },
+  "dispute": {
+    "job_id": 9912,
+    "customer": "Kate",
+    "tradie": "Perth Plumbing Co",
+    "issue": "didn't finish tiling in bathroom",
+    "evidence": ["https://.../before.jpg", "https://.../after.jpg"]
+  }
+}
