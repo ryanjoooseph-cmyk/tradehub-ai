@@ -1,17 +1,22 @@
-import path from "path";
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname  = path.dirname(__filename);
 
 /** @type {import('next').NextConfig} */
-const config = {
+const nextConfig = {
   reactStrictMode: true,
-  experimental: { appDir: true },
-  webpack: (cfg) => {
-    // Support legacy imports like: import X from 'a/...'
-    cfg.resolve.alias = {
-      ...(cfg.resolve.alias || {}),
-      a: path.resolve(__dirname)
+  output: 'standalone',
+  webpack: (config) => {
+    // allow "a/..." and "@/..." to resolve from repo root
+    config.resolve.alias = {
+      ...(config.resolve.alias ?? {}),
+      a: path.resolve(__dirname),
+      '@': path.resolve(__dirname),
     };
-    return cfg;
-  }
+    return config;
+  },
 };
 
-export default config;
+export default nextConfig;
