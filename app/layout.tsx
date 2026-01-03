@@ -1,17 +1,12 @@
-import "./globals.css";
-import type { Metadata } from "next";
+import './globals.css';
+import type { Metadata } from 'next';
 
-export const metadata: Metadata = {
-  title: "TradeHub",
-  description: "TradeHub app"
-};
+export const metadata: Metadata = { title: 'TradeHub' };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>
-        <main>{children}</main>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
