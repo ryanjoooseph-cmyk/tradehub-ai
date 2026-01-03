@@ -1,5 +1,4 @@
 import OpenAI from "openai";
-export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
@@ -7,6 +6,6 @@ export async function GET() {
     const models = await ai.models.list();
     return Response.json({ ok: true, count: models.data.length });
   } catch (err: any) {
-    return Response.json({ ok: false, error: String(err?.message || err) }, { status: 500 });
+    return Response.json({ ok: false, error: String(err?.message ?? err) }, { status: 500 });
   }
 }
