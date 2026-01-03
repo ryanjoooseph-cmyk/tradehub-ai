@@ -6,3 +6,5 @@ pydantic>=2.7
 tenacity>=8.2
 requests>=2.32
 psycopg2-binary>=2.9.9
+crewai>=0.51
+crewai-tools>=0.13
