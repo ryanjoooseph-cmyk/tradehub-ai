@@ -5,5 +5,5 @@ python-dotenv>=1.0
 pydantic>=2.7
 tenacity>=8.2
 requests>=2.32
-crewai>=0.65
+crewai>=0.51.0
 crewai-tools>=0.8
