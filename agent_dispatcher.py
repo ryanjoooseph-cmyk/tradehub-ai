@@ -2,7 +2,7 @@
 import os, sys, time, signal
 from typing import List, Dict
 
-# Make imports bulletproof both locally and on Render
+# make imports work both locally and on Render
 sys.path.insert(0, os.path.dirname(__file__))
 sys.path.insert(0, "/opt/render/project/src")
 
@@ -11,11 +11,11 @@ from feed_from_manifest import load_tasks
 SHUTDOWN = False
 POLL_SECONDS = int(os.getenv("POLL_SECONDS", "30"))
 
-def _handle_sigterm(*_):
+def _sigterm(*_):
     global SHUTDOWN
     SHUTDOWN = True
-signal.signal(signal.SIGTERM, _handle_sigterm)
-signal.signal(signal.SIGINT, _handle_sigterm)
+signal.signal(signal.SIGTERM, _sigterm)
+signal.signal(signal.SIGINT, _sigterm)
 
 def review(task: Dict) -> bool:
     ok = all(k in task for k in ("task_type", "feature"))
@@ -25,18 +25,15 @@ def review(task: Dict) -> bool:
 def run_once() -> None:
     tasks: List[Dict] = load_tasks()
     print(f"[feed] loaded {len(tasks)} task definitions", flush=True)
-
     for t in tasks:
         if not review(t):
             continue
-        tt = t.get("task_type")
-        feature = t.get("feature")
-        route = t.get("route", "")
-        print(f"[runner] executing task_type={tt} feature={feature} route={route}", flush=True)
-        try:
-            time.sleep(0.5)  # TODO: call real executors here
-        except Exception as e:
-            print(f"[runner] ERROR: {e!r}", flush=True)
+        print(
+            f"[runner] executing task_type={t.get('task_type')} "
+            f"feature={t.get('feature')} route={t.get('route','')}",
+            flush=True,
+        )
+        time.sleep(0.5)  # TODO: call real executors
 
 def main() -> None:
     print("[boot] worker started", flush=True)
