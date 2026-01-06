@@ -1,3 +1,6 @@
 import os
 import json
-import psycopg2
+import time
+import logging
+
+import psycopg
