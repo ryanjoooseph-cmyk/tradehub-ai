@@ -1,9 +1,9 @@
 openai>=1.40
-supabase>=2.5
-psycopg[binary]>=3.2.3
+supabase>=2.27.0
+psycopg[binary]==3.3.2
 python-dotenv>=1.0
 pydantic>=2.7
 tenacity>=8.2
 requests>=2.32
-crewai>=0.51.0
-crewai-tools>=0.8
+crewai==1.6.1
+crewai-tools==1.6.1
